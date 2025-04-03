@@ -3,19 +3,20 @@ import numpy as np
 import os
 import sys
 
-def import_path():
+def import_path(load_bfm_path=True):
     """
     Adds the BFM_PATH and its subdirectories to the system path for module imports.
     This is necessary for accessing custom modules in the BFM project.
     """
     # Get the BFM_PATH from environment variables
-    BFM_PATH = os.environ.get("BFM_PATH")
     WM_DATA_PATH = os.environ.get("WM_DATA_PATH")
     
-    # Ensure necessary paths are included
-    sys.path.append(BFM_PATH)
-    sys.path.append(os.path.join(BFM_PATH, "NNOpt"))
-    sys.path.append(os.path.join(BFM_PATH, "NNOpt/post_proc"))
+    if load_bfm_path:
+        # Ensure necessary paths are included
+        BFM_PATH = os.environ.get("BFM_PATH")
+        sys.path.append(BFM_PATH)
+        sys.path.append(os.path.join(BFM_PATH, "NNOpt"))
+        sys.path.append(os.path.join(BFM_PATH, "NNOpt/post_proc"))
 
     return WM_DATA_PATH
 
@@ -53,5 +54,3 @@ def find_k_y_values(y, U_all, y_all, k=2):
                         left=U_all_sorted[0], right=U_all_sorted[-1])
                         
     return U_at_ky
-
-# You can add other common utility functions used by your data creation scripts here.
