@@ -170,7 +170,7 @@ for i, angle in enumerate(angle_list):
     unnormalized_inputs_df = pd.concat(all_unnormalized_inputs_data, ignore_index=True)
 
 # Save DataFrames to HDF5 file
-    output_filename = os.path.join(savedatapath, f'TBL_{angle}_data.pkl')
+    output_filename = os.path.join(savedatapath, f'TBL_{angle}_data.h5')
     print(f"\nSaving data to HDF5 file: {output_filename}")
         # Use fixed format for better performance with numerical data
     inputs_df.to_hdf(output_filename, key='inputs', mode='w', format='fixed')
