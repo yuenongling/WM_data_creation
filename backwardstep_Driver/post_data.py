@@ -3,6 +3,7 @@ import pandas as pd
 import pickle as pkl
 import argparse
 import os
+from scipy import interpolate
 
 # --- Set up paths and constants ---
 from data_processing_utils import find_k_y_values, import_path
@@ -20,6 +21,7 @@ M_ref = 0.128
 Re_H = 36000
 T_ref = 537  # R
 H = 1.0  # Step height (normalized to 1.0)
+Uref = 1.0  # Reference velocity (normalized)
 
 # Fractions for defining the boundary layer region of interest
 UP_FRAC = 0.2    # Upper fraction of boundary layer to consider
@@ -33,26 +35,26 @@ def process_data(cf_file, cp_file, profile_file, output_path="./"):
     cf_data = pd.read_csv(cf_file)
     cp_data = pd.read_csv(cp_file)
     profile_data = pd.read_csv(profile_file)
-    
+
     # Get unique stations
     stations = profile_data['station'].unique()
     
     # Reference values
-    Uref = 1.0  # Reference velocity (normalized)
     nu = 1.0 / Re_H  # Non-dimensional kinematic viscosity
-    
-    # Initialize arrays for storing processed data
-    inputs = np.empty((0, 8))
-    output = np.empty((0,))
-    flow_type = np.empty((0, 5), dtype=object)
-    unnormalized_inputs = np.empty((0, 11))
 
+    # Calculate the pressure gradient
+    dPdx = np.gradient(cp_data['cp_orig'].values, cp_data['x'].values) * 0.5 * Uref**2
+    up = np.sign(dPdx) * (nu * abs(dPdx))**(1/3)
+    
     all_inputs_data = []
     all_output_data = []
     all_flow_type_data = []
     all_unnormalized_inputs_data = []
     
-    for station in stations:
+    # Hardcoded by looking at the data in the profile file
+    delta99 = [1.8, 2.3, 2.4, 3.2, 3.2]
+
+    for i, station in enumerate(stations):
         print(f"Processing station {station}")
         
         # Extract profile data for this station
@@ -62,51 +64,32 @@ def process_data(cf_file, cp_file, profile_file, output_path="./"):
         x = float(station)
         
         # Get the nearest Cf value to this x position
-        cf_idx = np.argmin(np.abs(cf_data['x'] - x))
-        Cf = cf_data['cf'].iloc[cf_idx]
+        cf_idx = np.argmin(abs(cf_data['x'].values - x))
+        Cf = np.interp(x, cf_data['x'].values, cf_data['cf'].values)
         
-        # Get the nearest Cp value to this x position
-        cp_idx = np.argmin(np.abs(cp_data['x'] - x))
-        Cp = cp_data['cp_orig'].iloc[cp_idx]
+        # Calculate utau from Cf
+        utau_i = np.sqrt(abs(Cf)/2) * Uref
         
         # Extract y and U data
         y_i = station_data['y'].values
+        if x < 0: # if the x position is negative, it is before the step 
+            y_i -= 1
+
         U_i = station_data['u'].values
         
-        # Calculate parameters similar to the original script
-        
         # Boundary layer thickness (estimate from max y value)
-        delta99_i = y_i.max()
+        delta99_i = delta99[i]
         
         # Skip the first point if it is zero
         if U_i[0] == 0 or y_i[0] == 0:
             y_i = y_i[1:]
             U_i = U_i[1:]
         
-        # Calculate utau from Cf
-        Ue = U_i.max()  # Edge velocity (max U in profile)
-        utau_i = np.sign(Cf)*np.sqrt(abs(Cf)/2) * Ue
-        
-        # Estimate pressure gradient
-        # Using simplified relation for demonstration
-        if len(cf_data) > cf_idx + 1:
-            dx = cf_data['x'].iloc[cf_idx+1] - cf_data['x'].iloc[cf_idx]
-            dCp = cp_data['cp_orig'].iloc[cp_idx+1] - cp_data['cp_orig'].iloc[cp_idx]
-            dPdx = dCp / dx if dx != 0 else 0
-        else:
-            dPdx = 0
-        
         # Calculate pressure gradient velocity scale
-        up_i = np.sign(dPdx) * (abs(nu * dPdx)) ** (1/3) if dPdx != 0 else 0
-        
-        # Calculate momentum thickness
-        dy = np.diff(y_i)
-        dy = np.append(dy, dy[-1])
-        U_ratio = U_i / Ue
-        theta_i = np.sum(U_ratio * (1 - U_ratio) * dy)
+        up_i = np.interp(x, cp_data['x'].values, up)
         
         # Calculate Albert parameter
-        albert_i = theta_i / (Ue**2) * dPdx if dPdx != 0 and Ue != 0 else 0
+        albert_i = 0
         
         # Find points within the boundary layer region of interest
         bot_index = np.where((y_i >= DOWN_FRAC*delta99_i) & (y_i <= UP_FRAC*delta99_i))[0]
@@ -227,23 +210,23 @@ def process_data(cf_file, cp_file, profile_file, output_path="./"):
     print(f"  Flow Type: {flow_type_df.shape}")
     print(f"  Unnormalized Inputs: {unnormalized_inputs_df.shape}")
 
-# --- Sanity Check ---
-    print("\n--- Sanity Check: Comparing HDF5 with Original Pickle ---")
-    with open('/home/yuenongling/Codes/BFM/WM_Opt/data/backstep_data.pkl', 'rb') as f:
-        original_data = pkl.load(f)
-
-# Load corresponding data from HDF5
-    inputs_hdf = inputs_df[inputs_df.index.isin(np.arange(len(original_data['inputs'])))].values
-    output_hdf = output_df[output_df.index.isin(np.arange(len(original_data['output'])))].values.flatten()
-    flow_type_hdf = flow_type_df[flow_type_df.index.isin(np.arange(len(original_data['flow_type'])))].values
-    unnormalized_inputs_hdf = unnormalized_inputs_df[
-        unnormalized_inputs_df.index.isin(np.arange(len(original_data['unnormalized_inputs'])))].values
-
-    print(f"  Inputs match: {np.allclose(original_data['inputs'], inputs_hdf)}")
-    print(f"  Output match: {np.allclose(original_data['output'], output_hdf)}")
-    print(f"  Flow type match: {np.array_equal(original_data['flow_type'].astype(str), flow_type_hdf.astype(str))}")
-    print(
-        f"  Unnormalized inputs match: {np.allclose(original_data['unnormalized_inputs'].flatten(), unnormalized_inputs_hdf.flatten(), rtol=1e-5, atol=1e-4)}")
+# # --- Sanity Check ---
+#     print("\n--- Sanity Check: Comparing HDF5 with Original Pickle ---")
+#     with open('/home/yuenongling/Codes/BFM/WM_Opt/data/backstep_data.pkl', 'rb') as f:
+#         original_data = pkl.load(f)
+#
+# # Load corresponding data from HDF5
+#     inputs_hdf = inputs_df[inputs_df.index.isin(np.arange(len(original_data['inputs'])))].values
+#     output_hdf = output_df[output_df.index.isin(np.arange(len(original_data['output'])))].values.flatten()
+#     flow_type_hdf = flow_type_df[flow_type_df.index.isin(np.arange(len(original_data['flow_type'])))].values
+#     unnormalized_inputs_hdf = unnormalized_inputs_df[
+#         unnormalized_inputs_df.index.isin(np.arange(len(original_data['unnormalized_inputs'])))].values
+#
+#     print(f"  Inputs match: {np.allclose(original_data['inputs'], inputs_hdf)}")
+#     print(f"  Output match: {np.allclose(original_data['output'], output_hdf)}")
+#     print(f"  Flow type match: {np.array_equal(original_data['flow_type'].astype(str), flow_type_hdf.astype(str))}")
+#     print(
+#         f"  Unnormalized inputs match: {np.allclose(original_data['unnormalized_inputs'].flatten(), unnormalized_inputs_hdf.flatten(), rtol=1e-5, atol=1e-4)}")
  
 # Process the data
 process_data(cf_file, cp_file, profile_file, savedatapath)
