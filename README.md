@@ -12,6 +12,8 @@ This directory contains scripts for generating various wall-modeled data sets fo
 
 ## Contents
 
+The complete summary of all cases can be found in [Table](https://docs.google.com/spreadsheets/d/18hcHtwxN7-uUAkYSo2UL1Tny2SpPDvQiWsKEqjHOlh0/edit?usp=sharing).
+
 The repository includes scripts and configurations for the following flow cases:
 
 * **`Channel`**: Channel flow.
