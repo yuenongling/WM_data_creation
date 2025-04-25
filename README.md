@@ -10,70 +10,44 @@ This directory contains scripts for generating various wall-modeled data sets fo
     * `import_path()`:  Adds necessary paths to the system for module imports.
     * `find_k_y_values()`:  Interpolates velocity values at specified locations within the boundary layer.
 
-## Turbulent Boundary Layer (TBL) Data
+## Contents
 
-* `TBL/create_TBL_data.py`:  Generates data for turbulent boundary layers.
-* `TBL/utils.py`:  Includes utility functions specific to TBL data processing, such as calculating vorticity and boundary layer statistics.
-    * Key functions:
-        * `compute_Omega_z_xloc()`, `compute_Omega_z_2d()`, `compute_Omega_z_dUdyonly()`:  Compute vorticity in the z-direction using different methods.
-        * `read_npz_file()`:  Reads data from NPZ files.
-        * `polynomial_smooth()`, `gaussian_kernel()`, `local_gaussian_smooth()`, `moving_average_smooth()`:  Smoothing functions for data processing.
-        * `Plot_U_mean()`, `Plot_U_mean_local()`, `Plot_U_mean_plus()`:  Functions for plotting mean velocity profiles.
-        * `read_npz_stats()`:  Reads and processes boundary layer statistics.
-* Flow Cases:
-    * Adverse Pressure Gradient (APG)
-    * Zero Pressure Gradient (ZPG)
-    * Favorable Pressure Gradient (FPG)
-* Possible Reference Paper:
-    * Spalart, P. R. “Direct numerical simulation of a turbulent boundary layer up to R<0xC3><0xA9>θ = 1410.” Journal of Fluid Mechanics 187 (1988): 61–98.
+The repository includes scripts and configurations for the following flow cases:
 
-## Pipe Flow Data
-
-* `pipe_Roma/create_pipe_data.py`:  Generates data for pipe flow.
-* Flow Cases:
-    * Different Reynolds numbers
-* Possible Reference Paper:
-    * Durst, F., & Uhlherr, A. (1994). Experimental studies of laminar pipe flows with polymer additives. Applied Scientific Research, 52(1), 1–18.
-
-## Airfoil Data
-
-* `airfoil_KTH/create_kth_airfoil_data_hdf5.py`:  Generates data for NACA airfoils.
-* `airfoil_KTH/airfoil_util.py`:  Provides utility functions for calculating airfoil geometry and curvature.
-    * Key functions:
-        * `naca_airfoil_curvature()`:  Calculates the curvature and radius of curvature.
-        * `naca_shape()`:  Generates airfoil coordinates.
-        * `plot_airfoil_with_curvature()`:  Plots airfoil shape and curvature.
-* Flow Cases:
-    * NACA 0012
-    * NACA 4412
-* Possible Reference Paper:
-    * Abbott, I. H., Von Doenhoff, A. E., & Stivers Jr, L. S. (1945). Theory of wing sections: including a summary of airfoil data. Courier Corporation.
-
-## Laminar Flow Data
-
-* `Laminar/create_FS_data.py`:  Generates data for Falkner-Skan boundary layers.
-* `Laminar/falkner_skan.py`:  Solves the Falkner-Skan equation.
-* Flow Cases:
-    * Favorable Pressure Gradient (FPG)
-    * Zero Pressure Gradient (ZPG)
-    * Adverse Pressure Gradient (APG)
-* Possible Reference Paper:
-    * Falkner, V. M., & Skan, S. W. (1930). Some approximate solutions of the boundary layer equations. Philosophical Magazine, 12(79), 865-896.
-
-## Synthetic Data
-
-* `Synthetic/create_SYN_data_hdf5.py`:  Generates synthetic data based on the log-law.
-* Flow Cases:
-    * Synthetic turbulent profiles
-* Possible Reference Paper:
-    * Pope, S. B. (2000). Turbulent flows. Cambridge university press.
-
-## Channel Flow Data
-
-* `Channel/create_CH_data_hdf5.py`:  Generates data for channel flow.
-* Flow Cases:
-    * Different Reynolds numbers
-* Possible Reference Paper:
-    * Moser, R. D., Kim, J., & Mansour, N. N. (1999). Direct numerical simulation of turbulent channel flow up to Reτ= 590. Physics of Fluids, 11(4), 943-945.
-
-**Note:** This README provides a high-level overview. For detailed information on each data set and how to use the scripts, please refer to the comments within the individual Python files.
+* **`Channel`**: Channel flow.
+    * *Source:* Bernardini et al 2021 & Pirozzoli et al 2021
+* **`Laminar`**: *(Description/Source TBD)*.
+* **`Synthetic`**: Scripts for generating synthetic turbulence data. *(Source TBD)*.
+* **`TBL`**: Turbulent boundary layer flow (including mild/strong APG).
+    * *Source (Mild APG):* Lozano-Duran et al 2014, Lee et al 2015, Hoyas et al 2022
+    * *Source (Strong APG/FPG):* Bikker et al. 2019 & Hosseini et al. 2016
+* **`airfoil_KTH`**: Airfoil flow (KTH configuration).
+    * *Source:* (TBD - Clarify link to table entries)
+* **`airfoil_Tamaki`**: Airfoil flow (Tamaki configuration, e.g., NACA0012, near stall).
+    * *Source:* Tamaki et al. 2023
+* **`apg_KTH`**: Turbulent boundary layer with Adverse Pressure Gradient (APG).
+    * *Source (Mild APG):* Lozano-Duran et al 2014, Lee et al 2015, Hoyas et al 2022
+    * *Source (Strong APG/FPG):* Bikker et al. 2019 & Hosseini et al. 2016
+* **`backwardstep_Driver`**: Flow separation over a backward-facing step.
+    * *Source:* Driver et al. 1985
+* **`bend_Smits`**: Flow with convex curvature effects.
+    * *Source:* Smits et al. 1979
+* **`bump_Gaussian`**: Flow with curvature and pressure gradient over a Gaussian bump.
+    * *Source:* Song et al 2004
+* **`bump_family_Matal`**: Flow with curvature, pressure gradient (potentially 3D) over parametric bumps.
+    * *Source:* Matai et al 2019
+* **`conv_div_channel_Laval`**: Flow separation in a converging-diverging channel.
+    * *Source:* Laval et al 2010
+* **`hump_NASA_Uzun`**: Flow with curvature and pressure gradient over the NASA wall-mounted hump.
+    * *Source:* Uzun et al. 2018
+* **`periodic_hill_Balakumar`**: Flow with curvature and pressure gradient over periodic hills.
+    * *Source:* Balakumar 2005
+* **`periodic_hill_Gloerfelt`**: Flow with curvature and pressure gradient over periodic hills.
+    * *Source:* Gloerfelt et al. 2019
+* **`pipe_Roma`**: High Reynolds number turbulent pipe flow.
+    * *Source:* Lozano-Duran et al 2014, Lee et al 2015, Hoyas et al 2022
+* **`sep_bubble_Coleman`**: Flow with 3D separation (swept turbulent separation bubble).
+    * *Source:* Coleman et al 2019
+* **`sep_bubble_Kamogawa`**: Flow with a pressure-induced separation bubble.
+    * *Source:* Komiyama et al. 2022 / Kokkinakis et al. 2018
+* **`smooth_ramp_Uzun`**: *(Description/Source TBD)*.
