@@ -16,40 +16,59 @@ The complete summary of all cases can be found in [Table](https://docs.google.co
 
 The repository includes scripts and configurations for the following flow cases:
 
-* **`Channel`**: Channel flow.
-    * *Source:* Bernardini et al 2021 & Pirozzoli et al 2021
-* **`Laminar`**: *(Description/Source TBD)*.
-* **`Synthetic`**: Scripts for generating synthetic turbulence data. *(Source TBD)*.
-* **`TBL`**: Turbulent boundary layer flow (including mild/strong APG).
-    * *Source (Mild APG):* Lozano-Duran et al 2014, Lee et al 2015, Hoyas et al 2022
-    * *Source (Strong APG/FPG):* Bikker et al. 2019 & Hosseini et al. 2016
+* **`Channel`**: High Reynolds number Channel flow.
+    * *Source:* Lozano-Duran et al. 2014, Lee et al. 2015, Hoyas et al. 2022
+* **`Laminar`**: Laminar flow with pressure gradient (PG).
+    * *Source:* Falkner-Skan
+* **`Synthetic`**: Scripts for generating synthetic turbulence data.
+    * *Source:* *(blank)*
+* **`TBL`**: Turbulent boundary layer flow.
+    * *Description:* Mild Adverse Pressure Gradient (APG) / Strong APG/Forward Pressure Gradient (FPG); separation
+    * *Source (Mild APG):* Bobke et al. 2018 & Hosseini et al. 2016
+    * *Source (Strong APG/FPG):* Current work
 * **`airfoil_KTH`**: Airfoil flow (KTH configuration).
-    * *Source:* (TBD - Clarify link to table entries)
-* **`airfoil_Tamaki`**: Airfoil flow (Tamaki configuration, e.g., NACA0012, near stall).
+    * *Description:* Airfoils (related)
+    * *Source:* *(blank)*
+* **`airfoil_Tamaki`**: Airfoil flow (Tamaki configuration, e.g., near stall).
+    * *Description:* Airfoils
     * *Source:* Tamaki et al. 2023
 * **`apg_KTH`**: Turbulent boundary layer with Adverse Pressure Gradient (APG).
-    * *Source (Mild APG):* Lozano-Duran et al 2014, Lee et al 2015, Hoyas et al 2022
-    * *Source (Strong APG/FPG):* Bikker et al. 2019 & Hosseini et al. 2016
+    * *Description:* Mild APG / Strong APG/FPG; separation
+    * *Source (Mild APG):* Bobke et al. 2018 & Hosseini et al. 2016
+    * *Source (Strong APG/FPG):* Current work
 * **`backwardstep_Driver`**: Flow separation over a backward-facing step.
+    * *Description:* Separation
     * *Source:* Driver et al. 1985
 * **`bend_Smits`**: Flow with convex curvature effects.
+    * *Description:* Curvature
     * *Source:* Smits et al. 1979
 * **`bump_Gaussian`**: Flow with curvature and pressure gradient over a Gaussian bump.
-    * *Source:* Song et al 2004
-* **`bump_family_Matal`**: Flow with curvature, pressure gradient (potentially 3D) over parametric bumps.
-    * *Source:* Matai et al 2019
+    * *Description:* Curvature + PG + 3D
+    * *Source:* Uzun et al. 2022 (WRLES/DNS, 2D) & Gray et al. 2023 (Exp, 3D)
+* **`bump_family_Matal`**: Flow with curvature and pressure gradient over parametric bumps.
+    * *Description:* Curvature + PG
+    * *Source:* Matai et al. 2019
 * **`conv_div_channel_Laval`**: Flow separation in a converging-diverging channel.
-    * *Source:* Laval et al 2010
+    * *Description:* Separation
+    * *Source:* Laval et al. 2010
 * **`hump_NASA_Uzun`**: Flow with curvature and pressure gradient over the NASA wall-mounted hump.
-    * *Source:* Uzun et al. 2018
+    * *Description:* Curvature + PG
+    * *Source:* Uzun et al. 2017
 * **`periodic_hill_Balakumar`**: Flow with curvature and pressure gradient over periodic hills.
-    * *Source:* Balakumar 2005
+    * *Description:* Curvature + PG
+    * *Source:* Balakumar 2015
 * **`periodic_hill_Gloerfelt`**: Flow with curvature and pressure gradient over periodic hills.
+    * *Description:* Curvature + PG
     * *Source:* Gloerfelt et al. 2019
 * **`pipe_Roma`**: High Reynolds number turbulent pipe flow.
-    * *Source:* Lozano-Duran et al 2014, Lee et al 2015, Hoyas et al 2022
+    * *Description:* High Re
+    * *Source:* Wu et al. 2010 / Pirozzoli et al. 2020
 * **`sep_bubble_Coleman`**: Flow with 3D separation (swept turbulent separation bubble).
-    * *Source:* Coleman et al 2019
+    * *Description:* 3D + separation
+    * *Source:* Coleman et al. 2019
 * **`sep_bubble_Kamogawa`**: Flow with a pressure-induced separation bubble.
-    * *Source:* Komiyama et al. 2022 / Kokkinakis et al. 2018
-* **`smooth_ramp_Uzun`**: *(Description/Source TBD)*.
+    * *Description:* Separation
+    * *Source:* Kamogawa et al. 2023
+* **`smooth_ramp_Uzun`**: Flow over a smooth ramp configuration.
+    * *Description:* *(blank)*
+    * *Source:* *(blank)*
