@@ -45,6 +45,7 @@ for case in subcases:
         Cf = result['Cf'] # Cf = 2(utau / Ue)^2
 
         U = result['U']
+        P = result['P']
         Ue = result['Ue']
         utau = result['ut']
         # Retau = [utau[i] * delta[i] / nu[i] for i, _ in enumerate(utau)]
@@ -87,6 +88,7 @@ for case in subcases:
 
             y_i = y[idx]
             U_i = U[idx]
+            P_i = P[idx]
 
             delta99_i   = delta[idx]
             nu_i = nu[idx]
@@ -113,13 +115,13 @@ for case in subcases:
             U3 = find_k_y_values(y_i[bot_index], U_i, y_i, k=2)
             U4 = find_k_y_values(y_i[bot_index], U_i, y_i, k=3)
 
-            pi_1 = y_i * U_i / nu_i
-            pi_1 = pi_1[bot_index]
-            pi_2 = up_i * y_i / nu_i
-            pi_2 = pi_2[bot_index]
-            pi_3 = U2 * y_i[bot_index] / nu_i
-            pi_4 = U3 * y_i[bot_index] / nu_i
-            pi_5 = U4 * y_i[bot_index] / nu_i
+            # pi_1 = y_i * U_i / nu_i
+            # pi_1 = pi_1[bot_index]
+            # pi_2 = up_i * y_i / nu_i
+            # pi_2 = pi_2[bot_index]
+            # pi_3 = U2 * y_i[bot_index] / nu_i
+            # pi_4 = U3 * y_i[bot_index] / nu_i
+            # pi_5 = U4 * y_i[bot_index] / nu_i
 
             # NOTE: Velocity gradient
             dUdy = np.gradient(U_i, y_i)
@@ -127,12 +129,15 @@ for case in subcases:
             dudy_2 = find_k_y_values(y_i[bot_index], dUdy, y_i, k=1)
             dudy_3 = find_k_y_values(y_i[bot_index], dUdy, y_i, k=2)
 
-            pi_6 = dudy_1 * y_i[bot_index]**2 / nu_i
-            pi_7 = dudy_2 * y_i[bot_index]**2 / nu_i
-            pi_8 = dudy_3 * y_i[bot_index]**2 / nu_i
+            delta_p = P_i - P_i[0]  # Pressure difference from the first point
+            up_n_i = np.sign(delta_p) * (abs(nu_i * delta_p)) ** (1 / 3)
 
-            pi_out = utau_i * y_i / nu_i
-            pi_out = pi_out[bot_index]
+            # pi_6 = dudy_1 * y_i[bot_index]**2 / nu_i
+            # pi_7 = dudy_2 * y_i[bot_index]**2 / nu_i
+            # pi_8 = dudy_3 * y_i[bot_index]**2 / nu_i
+            #
+            # pi_out = utau_i * y_i / nu_i
+            # pi_out = pi_out[bot_index]
 
             # --- Calculate Input Features (Pi Groups) ---
             # Note:  dPdx is NOT zero here
@@ -140,6 +145,7 @@ for case in subcases:
             inputs_dict = {
                 'u1_y_over_nu': U_i[bot_index] * y_i[bot_index] / nu_i,
                 'up_y_over_nu': up_i * y_i[bot_index] / nu_i,  # pi_2 (is NOT zero for APG)
+                'upn_y_over_nu': up_n_i[bot_index] * y_i[bot_index] / nu_i,  # pi_2 (is NOT zero for APG)
                 'u2_y_over_nu': U2 * y_i[bot_index] / nu_i,
                 'u3_y_over_nu': U3 * y_i[bot_index] / nu_i,
                 'u4_y_over_nu': U4 * y_i[bot_index] / nu_i,
@@ -165,6 +171,7 @@ for case in subcases:
                 'nu': np.full_like(y_i[bot_index], nu_i),
                 'utau': np.full_like(y_i[bot_index], utau_i),
                 'up': np.full_like(y_i[bot_index], up_i),
+                'upn': up_n_i[bot_index],
                 'u2': U2,
                 'u3': U3,
                 'u4': U4,
@@ -204,20 +211,20 @@ for case in subcases:
         print("Data successfully saved.")
 
         # --- Sanity Check ---
-        print("\n--- Sanity Check: Comparing HDF5 with Original Pickle ---")
-        with open('/home/yuenongling/Codes/BFM/WM_Opt/data/' + 'naca_' + case + '_' + case_string + '_data.pkl', 'rb') as f:
-            original_data = pkl.load(f)
-
-        # Load corresponding data from HDF5
-        inputs_hdf = inputs_df[inputs_df.index.isin(np.arange(len(original_data['inputs'])))].values
-        output_hdf = output_df[output_df.index.isin(np.arange(len(original_data['output'])))].values.flatten()
-        flow_type_hdf = flow_type_df[flow_type_df.index.isin(np.arange(len(original_data['flow_type'])))].values
-        unnormalized_inputs_hdf = unnormalized_inputs_df[
-            unnormalized_inputs_df.index.isin(np.arange(len(original_data['unnormalized_inputs'])))].values
-
-        print(f"\nSubcase: naca_{case}_{case_string}")
-        print(f"  Inputs match: {np.allclose(original_data['inputs'], inputs_hdf)}")
-        print(f"  Output match: {np.allclose(original_data['output'], output_hdf)}")
-        print(f"  Flow type match: {np.array_equal(original_data['flow_type'].astype(str), flow_type_hdf.astype(str))}")
-        print(
-            f"  Unnormalized inputs match: {np.allclose(original_data['unnormalized_inputs'].flatten(), unnormalized_inputs_hdf.flatten(), rtol=1e-5, atol=1e-4)}")
+        # print("\n--- Sanity Check: Comparing HDF5 with Original Pickle ---")
+        # with open('/home/yuenongling/Codes/BFM/WM_Opt/data/' + 'naca_' + case + '_' + case_string + '_data.pkl', 'rb') as f:
+        #     original_data = pkl.load(f)
+        #
+        # # Load corresponding data from HDF5
+        # inputs_hdf = inputs_df[inputs_df.index.isin(np.arange(len(original_data['inputs'])))].values
+        # output_hdf = output_df[output_df.index.isin(np.arange(len(original_data['output'])))].values.flatten()
+        # flow_type_hdf = flow_type_df[flow_type_df.index.isin(np.arange(len(original_data['flow_type'])))].values
+        # unnormalized_inputs_hdf = unnormalized_inputs_df[
+        #     unnormalized_inputs_df.index.isin(np.arange(len(original_data['unnormalized_inputs'])))].values
+        #
+        # print(f"\nSubcase: naca_{case}_{case_string}")
+        # print(f"  Inputs match: {np.allclose(original_data['inputs'], inputs_hdf)}")
+        # print(f"  Output match: {np.allclose(original_data['output'], output_hdf)}")
+        # print(f"  Flow type match: {np.array_equal(original_data['flow_type'].astype(str), flow_type_hdf.astype(str))}")
+        # print(
+        #     f"  Unnormalized inputs match: {np.allclose(original_data['unnormalized_inputs'].flatten(), unnormalized_inputs_hdf.flatten(), rtol=1e-5, atol=1e-4)}")

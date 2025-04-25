@@ -24,8 +24,8 @@ UP_FRAC_SEP = 0.05
 DOWN_FRAC_SEP = 0.005
 
 TBL_PATH = "/home/yuenongling/Codes/BL/TBLS"
-fpath_format = TBL_PATH + "/data/postnpz_20250211/TBL_Retheta_670_theta_{angle}deg_medium_avg_slice.npz"
-stats_BL = pkl.load(open(TBL_PATH + '/stats/20250211/stats_Re670_C_filtered_gauss.pkl', 'rb'))
+fpath_format = TBL_PATH + "/data/postnpz_20250321/TBL_Retheta_670_theta_{angle}deg_medium_avg_slice.npz"
+stats_BL = pkl.load(open(TBL_PATH + '/stats/20250321/stats_Re670_C_filtered_gauss.pkl', 'rb'))
 
 # --- Retheta and some other setups ---
 Retheta = 670
@@ -110,6 +110,11 @@ for i, angle in enumerate(angle_list):
         pi_7 = dudy_2 * ym[idy_low:idy_high]**2 / nu
         pi_8 = dudy_3 * ym[idy_low:idy_high]**2 / nu
 
+        # Normal pressure "gradient"
+        delta_p = (Pmean[idx+1, idy_low:idy_high] - Pmean[idx+1, 0]) /  ym[idy_low:idy_high]
+        upn = np.sign(delta_p) * (abs(delta_p) * nu )**(1/3)
+        pi_9 = upn * ym[idy_low:idy_high] / nu
+
         # NOTE: Local pressure-gradient based Reynolds number
         u_p = up[idx]
         pi_2 = u_p * ym[idy_low:idy_high] / nu
@@ -126,6 +131,7 @@ for i, angle in enumerate(angle_list):
             'dudy1_y_pow2_over_nu': pi_6,
             'dudy2_y_pow2_over_nu': pi_7,
             'dudy3_y_pow2_over_nu': pi_8,
+            'upn_y_over_nu': pi_9,
         }
         all_inputs_data.append(pd.DataFrame(inputs_dict))
 
@@ -149,6 +155,7 @@ for i, angle in enumerate(angle_list):
             'dudy1': dudy_1,
             'dudy2': dudy_2,
             'dudy3': dudy_3,
+            'upn': upn,
         }
         all_unnormalized_inputs_data.append(pd.DataFrame(unnorm_dict))
 
@@ -188,19 +195,19 @@ for i, angle in enumerate(angle_list):
     print(f"  Unnormalized Inputs: {unnormalized_inputs_df.shape}")
 
 # --- Sanity Check ---
-    print("\n--- Sanity Check: Comparing HDF5 with Original Pickle ---")
-    with open(f'/home/yuenongling/Codes/BFM/WM_Opt/data/TBL_{angle}_data.pkl', 'rb') as f:
-        original_data = pkl.load(f)
-
-# Load corresponding data from HDF5
-    inputs_hdf = inputs_df[inputs_df.index.isin(np.arange(len(original_data['inputs'])))].values
-    output_hdf = output_df[output_df.index.isin(np.arange(len(original_data['output'])))].values.flatten()
-    flow_type_hdf = flow_type_df[flow_type_df.index.isin(np.arange(len(original_data['flow_type'])))].values
-    unnormalized_inputs_hdf = unnormalized_inputs_df[
-        unnormalized_inputs_df.index.isin(np.arange(len(original_data['unnormalized_inputs'])))].values
-
-    print(f"  Inputs match: {np.allclose(original_data['inputs'], inputs_hdf)}")
-    print(f"  Output match: {np.allclose(original_data['output'], output_hdf)}")
-    print(f"  Flow type match: {np.array_equal(original_data['flow_type'].astype(str), flow_type_hdf.astype(str))}")
-    print(
-        f"  Unnormalized inputs match: {np.allclose(original_data['unnormalized_inputs'].flatten(), unnormalized_inputs_hdf.flatten(), rtol=1e-5, atol=1e-4)}")
+#     print("\n--- Sanity Check: Comparing HDF5 with Original Pickle ---")
+#     with open(f'/home/yuenongling/Codes/BFM/WM_Opt/data/TBL_{angle}_data.pkl', 'rb') as f:
+#         original_data = pkl.load(f)
+#
+# # Load corresponding data from HDF5
+#     inputs_hdf = inputs_df[inputs_df.index.isin(np.arange(len(original_data['inputs'])))].values
+#     output_hdf = output_df[output_df.index.isin(np.arange(len(original_data['output'])))].values.flatten()
+#     flow_type_hdf = flow_type_df[flow_type_df.index.isin(np.arange(len(original_data['flow_type'])))].values
+#     unnormalized_inputs_hdf = unnormalized_inputs_df[
+#         unnormalized_inputs_df.index.isin(np.arange(len(original_data['unnormalized_inputs'])))].values
+#
+#     print(f"  Inputs match: {np.allclose(original_data['inputs'], inputs_hdf)}")
+#     print(f"  Output match: {np.allclose(original_data['output'], output_hdf)}")
+#     print(f"  Flow type match: {np.array_equal(original_data['flow_type'].astype(str), flow_type_hdf.astype(str))}")
+#     print(
+#         f"  Unnormalized inputs match: {np.allclose(original_data['unnormalized_inputs'].flatten(), unnormalized_inputs_hdf.flatten(), rtol=1e-5, atol=1e-4)}")

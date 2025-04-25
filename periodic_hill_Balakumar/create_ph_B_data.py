@@ -14,10 +14,16 @@ WALL_STATS_PATH = os.path.join(STATS_PATH, "hill_grid.csv")
 OUTPUT_PATH = os.path.join(WM_DATA_PATH, "data")
 
 REYNOLDS_NUMBER = 2800
-UPPER_FRACTION = 0.20
+UPPER_FRACTION = 0.18
 LOWER_FRACTION = 0.025
-UPPER_FRACTION_SEP = 0.05
+UPPER_FRACTION_SEP = 0.1
 LOWER_FRACTION_SEP = 0.003
+
+# --- Select whether to save data and which points to inspect ---
+import sys
+save_data = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+inspect_x = [1.1475, 4.9719, 6.052468, 8.002593]
+inspect_x = []
 
 
 # --- Utility Functions ---
@@ -247,7 +253,7 @@ def process_and_save_region_data(
     """
 
     # WARNING: Fix delta to be unit normal distance
-    delta = 0.3
+    delta = 0.7
 
     all_inputs_data = []
     all_output_data = []
@@ -259,10 +265,27 @@ def process_and_save_region_data(
 
         # if region == 'APG' and up[i] < 0:
         #     continue
+        #     FIXME: Manually set to skip problematic points
+        if (x_normal[i,0] < 0.4 or x_normal[i,0] > 8.4):
+            print(f"WARNING: Skipping point at x={x_normal[i,0]}")
+            continue
 
         dist_normal_i = S[i]
         idx_low_bl_i = np.where(dist_normal_i > down_frac * delta)[0][0]
         idx_up_bl_i = np.where(dist_normal_i <= up_frac * delta)[0][-1]
+
+        # Special tratment for separation zone
+        if u_mag[i, 0] < 0:
+            idx_low_bl_i = np.where(dist_normal_i > LOWER_FRACTION_SEP * delta)[0][0]
+            idx_up_bl_i = np.where(dist_normal_i <= UPPER_FRACTION_SEP * delta)[0][-1]
+            idx_pos_low = np.where(u_mag[i, :] > 0)[0][0]
+            if idx_pos_low > idx_up_bl_i:
+                print(f"WARNING: idx_pos_low > idx_up_bl_i at x={x_normal[i,0]}")
+                continue
+            
+            if idx_pos_low >= idx_low_bl_i:
+                # Replace idx_up_bl_i with idx_pos_low
+                idx_up_bl_i = idx_pos_low - 1
 
         u_interp_1 = interpolate_values(
             dist_normal_i[idx_low_bl_i:idx_up_bl_i], dist_normal_i[1:], u_mag[i, :]
@@ -629,17 +652,48 @@ u_mag, v_mag = calculate_tangent_normal_velocity(u_velocity, v_velocity,
 u_mag = u_mag[:,1:]
 # s_dist = s_dist[:,1:]
 
-process_and_save_region_data(
-    u_mag,
-    utau_interpolated,
-    x_normal, # X coordinates of the wall
-    s_dist, # Wall-normal distance
-    1, 
-    up,
-    'ph_B',
-    1, 
-    len(u_mag)-1,
-    up_frac=UPPER_FRACTION,
-    down_frac=LOWER_FRACTION,
-    save_plots=False,
-)
+if save_data:
+    process_and_save_region_data(
+        u_mag,
+        utau_interpolated,
+        x_normal, # X coordinates of the wall
+        s_dist, # Wall-normal distance
+        1, 
+        up,
+        'ph_B',
+        1, 
+        len(u_mag)-1,
+        up_frac=UPPER_FRACTION,
+        down_frac=LOWER_FRACTION,
+        save_plots=False,
+    )
+
+if len(inspect_x) > 0:
+    for x in inspect_x:
+        ind = np.argmin(np.abs(x_normal[:, 0] - x))
+        print(f"Inspecting point at x={x_normal[ind, 0]}")
+
+        plt.figure(figsize=(10, 6))
+        plt.plot(s_dist[ind, 1:], u_mag[ind, :], label='u_mag')
+        # plt.plot(s_dist[ind, 1:], v_mag[ind, :], label='v_mag')
+        plt.xlabel('Wall-normal distance (s)')
+        plt.ylabel('Velocity')
+        plt.title(f'Velocity profiles at x={x_normal[ind, 0]}')
+        plt.legend()
+
+        # Plot in plus units
+        fig, ax = plt.subplots(figsize=(10, 6))
+        u_plus = u_mag[ind, :] / utau_interpolated[ind]
+        s_dist_p = s_dist[ind, 1:] * REYNOLDS_NUMBER * utau_interpolated[ind]
+        ax.semilogx(s_dist_p, u_plus, label='u+')
+
+        # Add log law
+        y_plus = np.linspace(10, 1000, 100)
+        u_plus_law = 1 / 0.41 * np.log(y_plus) + 5.2
+        ax.semilogx(y_plus, u_plus_law, 'r--', label='Log Law')
+        ax.set_xlabel('Wall-normal distance (s+)')
+        ax.set_ylabel('Velocity (u+)')
+        ax.legend()
+
+
+        plt.show()

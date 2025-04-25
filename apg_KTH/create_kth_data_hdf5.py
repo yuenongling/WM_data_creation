@@ -39,6 +39,7 @@ for subcase in subcases:
     up = np.sign(dPdx) * (abs(nu * dPdx)) ** (1 / 3)
     delta99 = result['delta99']
     beta = result['beta']
+    P    = result['P']
 
     # Albert parameter: alber = theta / Ue**2 * dPdx
     albert = theta / Ue**2 * dPdx
@@ -53,6 +54,7 @@ for subcase in subcases:
         #     break
         y_i = y[idx]
         U_i = U[idx]
+        P_i = P[idx]
 
         delta99_i = delta99[idx]
         nu_i = nu[idx]
@@ -70,6 +72,9 @@ for subcase in subcases:
         U_i = np.array(U_i)
         up_i = up[idx]
 
+        delta_p = P_i - P_i[0]  # Pressure difference from the first point
+        up_n_i = np.sign(delta_p) * (abs(nu_i * delta_p)) ** (1 / 3)
+
         bot_index = np.where((y_i >= DOWN_FRAC * delta99_i) & (y_i <= UP_FRAC * delta99_i))[0]
 
         U2 = find_k_y_values(y_i[bot_index], U_i, y_i, k=1)
@@ -82,6 +87,7 @@ for subcase in subcases:
         inputs_dict = {
             'u1_y_over_nu': U_i[bot_index] * y_i[bot_index] / nu_i,
             'up_y_over_nu': up_i * y_i[bot_index] / nu_i,  # pi_2 (is NOT zero for APG)
+            'upn_y_over_nu': up_n_i[bot_index] * y_i[bot_index] / nu_i,  # pi_2 (is NOT zero for APG)
             'u2_y_over_nu': U2 * y_i[bot_index] / nu_i,
             'u3_y_over_nu': U3 * y_i[bot_index] / nu_i,
             'u4_y_over_nu': U4 * y_i[bot_index] / nu_i,
@@ -107,6 +113,7 @@ for subcase in subcases:
             'nu': np.full_like(y_i[bot_index], nu_i),
             'utau': np.full_like(y_i[bot_index], utau_i),
             'up': np.full_like(y_i[bot_index], up_i),
+            'upn': up_n_i[bot_index],
             'u2': U2,
             'u3': U3,
             'u4': U4,
@@ -154,21 +161,24 @@ for subcase in subcases:
     print(f"  Flow Type: {flow_type_df.shape}")
     print(f"  Unnormalized Inputs: {unnormalized_inputs_df.shape}")
 
+    # NOTE: This is outdated code for sanity check, uncomment if needed
+    # Only to check with original pickle data
+    
     # --- Sanity Check ---
-    print("\n--- Sanity Check: Comparing HDF5 with Original Pickle ---")
-    with open('/home/yuenongling/Codes/BFM/WM_Opt/data/apg_' + subcase + '_data.pkl', 'rb') as f:
-        original_data = pkl.load(f)
-
-    # Load corresponding data from HDF5
-    inputs_hdf = inputs_df[inputs_df.index.isin(np.arange(len(original_data['inputs'])))].values
-    output_hdf = output_df[output_df.index.isin(np.arange(len(original_data['output'])))].values.flatten()
-    flow_type_hdf = flow_type_df[flow_type_df.index.isin(np.arange(len(original_data['flow_type'])))].values
-    unnormalized_inputs_hdf = unnormalized_inputs_df[
-        unnormalized_inputs_df.index.isin(np.arange(len(original_data['unnormalized_inputs'])))].values
-
-    print(f"\nSubcase: {subcase}")
-    print(f"  Inputs match: {np.allclose(original_data['inputs'], inputs_hdf)}")
-    print(f"  Output match: {np.allclose(original_data['output'], output_hdf)}")
-    print(f"  Flow type match: {np.array_equal(original_data['flow_type'].astype(str), flow_type_hdf.astype(str))}")
-    print(
-        f"  Unnormalized inputs match: {np.allclose(original_data['unnormalized_inputs'].flatten(), unnormalized_inputs_hdf.flatten(), rtol=1e-5, atol=1e-4)}")
+    # print("\n--- Sanity Check: Comparing HDF5 with Original Pickle ---")
+    # with open('/home/yuenongling/Codes/BFM/WM_Opt/data/apg_' + subcase + '_data.pkl', 'rb') as f:
+    #     original_data = pkl.load(f)
+    #
+    # # Load corresponding data from HDF5
+    # inputs_hdf = inputs_df[inputs_df.index.isin(np.arange(len(original_data['inputs'])))].values
+    # output_hdf = output_df[output_df.index.isin(np.arange(len(original_data['output'])))].values.flatten()
+    # flow_type_hdf = flow_type_df[flow_type_df.index.isin(np.arange(len(original_data['flow_type'])))].values
+    # unnormalized_inputs_hdf = unnormalized_inputs_df[
+    #     unnormalized_inputs_df.index.isin(np.arange(len(original_data['unnormalized_inputs'])))].values
+    #
+    # print(f"\nSubcase: {subcase}")
+    # print(f"  Inputs match: {np.allclose(original_data['inputs'], inputs_hdf)}")
+    # print(f"  Output match: {np.allclose(original_data['output'], output_hdf)}")
+    # print(f"  Flow type match: {np.array_equal(original_data['flow_type'].astype(str), flow_type_hdf.astype(str))}")
+    # print(
+    #     f"  Unnormalized inputs match: {np.allclose(original_data['unnormalized_inputs'].flatten(), unnormalized_inputs_hdf.flatten(), rtol=1e-5, atol=1e-4)}")

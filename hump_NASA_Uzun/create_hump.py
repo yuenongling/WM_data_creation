@@ -14,11 +14,15 @@ WALL_GEO_PATH = os.path.join(STATS_PATH, "CoordsCleanup.dat")
 OUTPUT_PATH = os.path.join(WM_DATA_PATH, "data")
 
 REYNOLDS_NUMBER = 936000
-UPPER_FRACTION = 0.20
+UPPER_FRACTION = 0.15
 LOWER_FRACTION = 0.025
-UPPER_FRACTION_SEP = 0.05
+UPPER_FRACTION_SEP = 0.1
 LOWER_FRACTION_SEP = 0.003
 
+# --- Select whether to save data and which points to inspect ---
+import sys
+save_data = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+inspect_x = [0.2014175, 0.79862236, 0.90906449, 1.00000186]
 
 # --- Utility Functions ---
 def load_bump_data(filename):
@@ -145,12 +149,13 @@ def calculate_wall_normal_distance(x_normal, y_normal):
 
 
 def calculate_pi_groups(
-    dist_normal, up, kinematic_viscosity, u_interp_1, u_interp_2, u_interp_3, u_interp_4, dudy_1, dudy_2, dudy_3
+    dist_normal, up, upn, kinematic_viscosity, u_interp_1, u_interp_2, u_interp_3, u_interp_4, dudy_1, dudy_2, dudy_3
 ):
     """Calculates the dimensionless Pi groups."""
     return {
         "u1_y_over_nu": u_interp_1 * dist_normal / kinematic_viscosity,
         "up_y_over_nu": up * dist_normal / kinematic_viscosity,  # up is already scaled by nu
+        "upn_y_over_nu": upn * dist_normal / kinematic_viscosity,  # up is already scaled by nu
         "u2_y_over_nu": u_interp_2 * dist_normal / kinematic_viscosity,
         "u3_y_over_nu": u_interp_3 * dist_normal / kinematic_viscosity,
         "u4_y_over_nu": u_interp_4 * dist_normal / kinematic_viscosity,
@@ -170,7 +175,7 @@ def calculate_output(utau_interpolated, dist_normal, kinematic_viscosity):
 
 
 def calculate_unnormalized_inputs(
-    dist_normal, kinematic_viscosity, utau, up, u_interp_1, u_interp_2, u_interp_3, u_interp_4, dudy_1, dudy_2, dudy_3
+    dist_normal, kinematic_viscosity, utau, up, upn, u_interp_1, u_interp_2, u_interp_3, u_interp_4, dudy_1, dudy_2, dudy_3
 ):
     """Calculates the unnormalized input features."""
     return {
@@ -179,6 +184,7 @@ def calculate_unnormalized_inputs(
         "nu": np.full_like(dist_normal, kinematic_viscosity),
         "utau": np.full_like(dist_normal, utau),
         "dpdx": np.full_like(dist_normal, up),
+        "upn": upn,
         "u2": u_interp_2,
         "u3": u_interp_3,
         "u4": u_interp_4,
@@ -221,6 +227,7 @@ def save_to_hdf5(data_dict, filename):
 
 
 def process_and_save_region_data(
+    p,
     u_mag,
     utau_interpolated,
     x_normal, # X coordinates of the wall
@@ -242,7 +249,7 @@ def process_and_save_region_data(
     """
 
     # WARNING: Fix delta to be unit normal distance
-    delta = 0.25
+    delta = 0.08
 
     all_inputs_data = []
     all_output_data = []
@@ -271,9 +278,13 @@ def process_and_save_region_data(
         dudy_2 = find_k_y_values(dist_normal_i[idx_low_bl_i:idx_up_bl_i], dudy, dist_normal_i[1:], k=1)
         dudy_3 = find_k_y_values(dist_normal_i[idx_low_bl_i:idx_up_bl_i], dudy, dist_normal_i[1:], k=2)
 
+        delta_p = (p[i, :] - p[i, 0]) / (dist_normal_i - dist_normal_i[0])
+        upn = calculate_up(delta_p, REYNOLDS_NUMBER)
+
         pi_groups = calculate_pi_groups(
             dist_normal_i[idx_low_bl_i:idx_up_bl_i],
             up[i],
+            upn[idx_low_bl_i:idx_up_bl_i],
             kinematic_viscosity,
             u_interp_1,
             u_interp_2,
@@ -295,6 +306,7 @@ def process_and_save_region_data(
             kinematic_viscosity,
             utau_interpolated[i],
             up[i],
+            upn[idx_low_bl_i:idx_up_bl_i],
             u_interp_1,
             u_interp_2,
             u_interp_3,
@@ -314,24 +326,23 @@ def process_and_save_region_data(
         )
         all_flow_type_data.append(pd.DataFrame(flow_type_data))
 
-    breakpoint()
     # Concatenate dataframes
     inputs_df = pd.concat(all_inputs_data, ignore_index=True)
     output_df = pd.concat(all_output_data, ignore_index=True)
     flow_type_df = pd.concat(all_flow_type_data, ignore_index=True)
     unnormalized_inputs_df = pd.concat(all_unnormalized_inputs_data, ignore_index=True)
 
-    # Find rows with NaN values in inputs_df
-    nan_rows = inputs_df.isna().any(axis=1)
+    # # Find rows with NaN values in inputs_df
+    # nan_rows = inputs_df.isna().any(axis=1)
+    #
+    # # Get the indices of rows without NaN values
+    # valid_indices = inputs_df.index[~nan_rows]
 
-    # Get the indices of rows without NaN values
-    valid_indices = inputs_df.index[~nan_rows]
-
-    # Clean all DataFrames by selecting only valid indices
-    inputs_df = inputs_df.loc[valid_indices].copy()
-    output_df = output_df.loc[valid_indices].copy()
-    flow_type_df = flow_type_df.loc[valid_indices].copy()
-    unnormalized_inputs_df = unnormalized_inputs_df.loc[valid_indices].copy()
+    # # Clean all DataFrames by selecting only valid indices
+    # inputs_df = inputs_df.loc[valid_indices].copy()
+    # output_df = output_df.loc[valid_indices].copy()
+    # flow_type_df = flow_type_df.loc[valid_indices].copy()
+    # unnormalized_inputs_df = unnormalized_inputs_df.loc[valid_indices].copy()
 
     data_dict = {
         "inputs": inputs_df,
@@ -341,144 +352,6 @@ def process_and_save_region_data(
     }
 
     save_to_hdf5(data_dict, f"hump_data")
-
-
-def process_separation_zone_data(
-    u_mag,
-    cf_interpolated,
-    x_normal,
-    y_normal,
-    delta,
-    up,
-    ind_start,
-    ind_end,
-    save_plots=False,
-):
-    """
-    Processes and saves data specifically for the separation zone, handling Cf < 0.
-
-    Args:
-        ... (same as before)
-    """
-
-    all_inputs_data = []
-    all_output_data = []
-    all_flow_type_data = []
-    all_unnormalized_inputs_data = []
-    kinematic_viscosity = 1 / REYNOLDS_NUMBER
-
-    pi_1 = (
-        u_mag * calculate_wall_normal_distance(x_normal, y_normal)[:, 1:] * REYNOLDS_NUMBER
-    )
-
-    for i in range(ind_start, ind_end):
-        dist_normal_i = calculate_wall_normal_distance(
-            x_normal[i : i + 1], y_normal[i : i + 1]
-        )[0]
-        idx_low_bl_i = np.where(
-            dist_normal_i > LOWER_FRACTION_SEP * delta[i]
-        )[0][0]
-        idx_up_bl_i = np.where(
-            dist_normal_i <= UPPER_FRACTION_SEP * delta[i]
-        )[0][-1]
-
-        if cf_interpolated[i] < 0:
-            idx_up_old = idx_up_bl_i
-            idx_up_bl_i = min(
-                np.where(pi_1[i, :] > 0)[0][0] - 1, idx_up_bl_i
-            )
-            if idx_up_bl_i < idx_up_old:
-                print(f"WARNING: idx_up_bl < idx_up_old at x={x_normal[i,0]}")
-
-        if idx_up_bl_i <= idx_low_bl_i:
-            print(f"WARNING: idx_up_bl == idx_low_bl at x={x_normal[i,0]}")
-            continue
-
-        u_interp_1 = interpolate_values(
-            dist_normal_i[idx_low_bl_i:idx_up_bl_i], dist_normal_i[1:], u_mag[i, :]
-        )
-        u_interp_2 = find_k_y_values(dist_normal_i[idx_low_bl_i:idx_up_bl_i], u_mag[i, :], dist_normal_i[1:], k=1)
-        u_interp_3 = find_k_y_values(dist_normal_i[idx_low_bl_i:idx_up_bl_i], u_mag[i, :], dist_normal_i[1:], k=2)
-        u_interp_4 = find_k_y_values(dist_normal_i[idx_low_bl_i:idx_up_bl_i], u_mag[i, :], dist_normal_i[1:], k=3)
-        # note: velocity gradient
-        dudy = np.gradient(u_mag[i,:], dist_normal_i[1:])
-        dudy_1 = dudy[idx_low_bl_i-1:idx_up_bl_i-1]
-        dudy_2 = find_k_y_values(dist_normal_i[idx_low_bl_i:idx_up_bl_i], dudy, dist_normal_i[1:], k=1)
-        dudy_3 = find_k_y_values(dist_normal_i[idx_low_bl_i:idx_up_bl_i], dudy, dist_normal_i[1:], k=2)
-
-        pi_groups = calculate_pi_groups(
-            dist_normal_i[idx_low_bl_i:idx_up_bl_i],
-            up[i],
-            kinematic_viscosity,
-            u_interp_1,
-            u_interp_2,
-            u_interp_3,
-            u_interp_4,
-            dudy_1,
-            dudy_2,
-            dudy_3,
-        )
-        all_inputs_data.append(pd.DataFrame(pi_groups))
-
-        output_data = calculate_output(
-            cf_interpolated[i], dist_normal_i[idx_low_bl_i:idx_up_bl_i], kinematic_viscosity
-        )
-        all_output_data.append(pd.DataFrame(output_data))
-
-        unnormalized_inputs_data = calculate_unnormalized_inputs(
-            dist_normal_i[idx_low_bl_i:idx_up_bl_i],
-            kinematic_viscosity,
-            np.sqrt(0.5 * np.abs(cf_interpolated[i])),
-            up[i],
-            u_interp_1,
-            u_interp_2,
-            u_interp_3,
-            u_interp_4,
-            dudy_1,
-            dudy_2,
-            dudy_3,
-        )
-        all_unnormalized_inputs_data.append(pd.DataFrame(unnormalized_inputs_data))
-
-        flow_type_data = calculate_flow_type(
-            x_normal[i, 0],
-            delta[i],
-            'SEP',
-            kinematic_viscosity,
-            len(u_interp_1),
-        )
-        all_flow_type_data.append(pd.DataFrame(flow_type_data))
-
-# Concatenate dataframes
-    inputs_df = pd.concat(all_inputs_data, ignore_index=True)
-    output_df = pd.concat(all_output_data, ignore_index=True)
-    flow_type_df = pd.concat(all_flow_type_data, ignore_index=True)
-    unnormalized_inputs_df = pd.concat(all_unnormalized_inputs_data, ignore_index=True)
-
-    data_dict = {
-        "inputs": inputs_df,
-        "output": output_df,
-        "flow_type": flow_type_df,
-        "unnormalized_inputs": unnormalized_inputs_df,
-    }
-
-    save_to_hdf5(data_dict, "gaussian_2M_data_SEP")
-
-    if save_plots:
-        plt.figure()
-        sc = plt.scatter(
-            inputs_df["u1_y_over_nu"],
-            inputs_df["up_y_over_nu"],
-            s=3,
-            c=output_df["utau_y_over_nu"],
-            cmap="rainbow",
-            rasterized=True,
-        )
-        plt.colorbar(sc)
-        plt.xlabel(r"$\Pi_1=u_1y/\nu$")
-        plt.ylabel(r"$\Pi_2=u_py/\nu$")
-        plt.title(f"Gaussian Bump at Re={REYNOLDS_NUMBER} - Separation Zone")
-        plt.show()
 
 def calculate_tangent_normal_velocity(u, v, unit_tangents, unit_normals):
     """
@@ -557,6 +430,12 @@ def calculate_tangent_normal_velocity(u, v, unit_tangents, unit_normals):
 
 # Load data
 data = load_bump_data("wall_normal_profiles.pkl")
+
+# WARNING: This is outdated; previously read in two files, now merged into one
+# data_aft = load_bump_data("wall_normal_profiles_aft.pkl")
+# data = data | data_aft # Merge dictionaries
+
+
 cf_data, cp_data = load_cf_cp_data()
 
 # Load coordinates
@@ -587,6 +466,7 @@ y_normal = []
 u_velocity = []
 v_velocity = []
 s_dist = []
+p = []  # Placeholder for pressure gradient, not used in this script
 
 for key in data.keys():
     x_normal.append(data[key]['x_norm'])
@@ -594,11 +474,13 @@ for key in data.keys():
     u_velocity.append(data[key]['u'])
     v_velocity.append(data[key]['v'])
     s_dist.append(data[key]['s'])
+    p.append(data[key]['p'])  # Pressure gradient, not used in this script
 x_normal = np.array(x_normal)
 y_normal = np.array(y_normal)
 u_velocity = np.array(u_velocity)
 v_velocity = np.array(v_velocity)
 s_dist = np.array(s_dist)
+p = np.array(p)
 
 Uo = 1.00  # Free stream velocity assumed to be 1
 
@@ -630,17 +512,47 @@ u_mag, v_mag = calculate_tangent_normal_velocity(u_velocity, v_velocity,
 u_mag = u_mag[:,1:]
 # s_dist = s_dist[:,1:]
 
-process_and_save_region_data(
-    u_mag,
-    utau_interpolated,
-    x_normal, # X coordinates of the wall
-    s_dist, # Wall-normal distance
-    1, 
-    up,
-    'hump',
-    0, 
-    len(u_mag)-1,
-    up_frac=UPPER_FRACTION,
-    down_frac=LOWER_FRACTION,
-    save_plots=False,
-)
+if save_data:
+    process_and_save_region_data(
+        p,
+        u_mag,
+        utau_interpolated,
+        x_normal, # X coordinates of the wall
+        s_dist, # Wall-normal distance
+        1, 
+        up,
+        'hump',
+        0, 
+        len(u_mag)-1,
+        up_frac=UPPER_FRACTION,
+        down_frac=LOWER_FRACTION,
+        save_plots=False,
+    )
+
+if len(inspect_x) > 0:
+    for x in inspect_x:
+        ind = np.argmin(np.abs(x_normal[:, 0] - x))
+        print(f"Inspecting point at x={x_normal[ind, 0]}")
+        plt.figure(figsize=(10, 6))
+        plt.plot(s_dist[ind, 1:], u_mag[ind, :], label='u_mag')
+        # plt.plot(s_dist[ind, 1:], v_mag[ind, :], label='v_mag')
+        plt.xlabel('Wall-normal distance (s)')
+        plt.ylabel('Velocity')
+        plt.title(f'Velocity profiles at x={x_normal[ind, 0]}')
+        plt.legend()
+        plt.grid()
+
+        # Add log law
+        # Plot in plus units
+        fig, ax = plt.subplots(figsize=(10, 6))
+        u_plus = u_mag[ind, :] / utau_interpolated[ind]
+        s_dist_p = s_dist[ind, 1:] * REYNOLDS_NUMBER * utau_interpolated[ind]
+        ax.semilogx(s_dist_p, u_plus, label='u+')
+        y_plus = np.linspace(100, 1000, 100)
+        u_plus_law = 1 / 0.41 * np.log(y_plus) + 5.2
+        ax.semilogx(y_plus, u_plus_law, 'r--', label='Log Law')
+        ax.set_xlabel('Wall-normal distance (s+)')
+        ax.set_ylabel('Velocity (u+)')
+        ax.legend()
+
+        plt.show()

@@ -144,6 +144,7 @@ print("\nAvailable variables:")
 for var_name in stats.keys():
     print(f"- {var_name}: {stats[var_name].shape}")
 U = stats['u_velocity']
+P = stats['pressure']
 
 # Read surface data
 data = np.loadtxt(os.path.join(statspath, 'surface_data.txt'), skiprows=1)
@@ -156,12 +157,12 @@ print(f"Mean density range: {stats['density'].min():.3f} to {stats['density'].ma
 print(f"Mean x-velocity range: {stats['u_velocity'].min():.3f} to {stats['u_velocity'].max():.3f}")
 
 dp_dx = calculate_pressure_gradient_x(x, stats['pressure'])
-dp_dx_w = dp_dx[1, :]  # Pressure gradient at the wall
+dp_dx_w = dp_dx[0, :]  # Pressure gradient at the wall
 # Gaussian smoothing dp_dx_w
-dp_dx_w_smooth = local_gaussian_smooth(x[0, :], dp_dx_w, bandwidth=7)
-up = np.sign(dp_dx_w_smooth) * (abs(dp_dx_w_smooth / Ret)) ** (1/3)  # Pressure gradient velocity
+# dp_dx_w_smooth = local_gaussian_smooth(x[0, :], dp_dx_w, bandwidth=7)
+up = np.sign(dp_dx_w) * (abs(dp_dx_w / Ret)) ** (1/3)  # Pressure gradient velocity
 
-sampling_fre = 10
+sampling_fre = 20
 
 all_inputs_data = []
 all_output_data = []
@@ -171,22 +172,23 @@ all_unnormalized_inputs_data = []
 for idx, x_i in enumerate(x[0, :]):
 
     # WARNING: For this case, only sample separated cases
-    if Cf[idx] > 0:
-        continue
+    # if Cf[idx] > 0:
+    #     continue
 
     if idx % sampling_fre != 0 and np.abs(Cf[idx]) > 0.0001: # Keep more points near separation and reattachment
         continue
 
-    # NOTE: Discard points
-    if x_i < 20 or x_i > 340:
+    # WARNING: Manually remove points outside the range
+    if x_i < 20 or x_i > 252:
         continue
     print('x_i', x_i)
 
     y_i = y[:, idx]
     U_i = U[:, idx]
+    P_i = P[:, idx]
 
     # FIXME: Do a rough estimate of delta99
-    delta99_i = 0.7 * np.max(y)
+    delta99_i = 0.2 * np.max(y)
     utau_i = utau[idx]
     dPdx_i = dp_dx_w[idx]
 
@@ -213,6 +215,7 @@ for idx, x_i in enumerate(x[0, :]):
     # NOTE: Unnormalized inputs
     U_ = U_i[bot_index]
     y_ = y_i[bot_index]
+    P_ = P_i[bot_index]
     U_2 = find_k_y_values(y_, U_i, y_i, k=1)
     U_3 = find_k_y_values(y_, U_i, y_i, k=2)
     U_4 = find_k_y_values(y_, U_i, y_i, k=3)
@@ -234,6 +237,11 @@ for idx, x_i in enumerate(x[0, :]):
     pi_7 = dudy_2 * y_**2 * Ret
     pi_8 = dudy_3 * y_**2 * Ret
 
+    # NOTE: Wall-normal pressure gradient
+    delta_p = P_ - P_i[0]  # Pressure difference from the first point
+    up_n_i = np.sign(delta_p) * (abs(delta_p / Ret)) ** (1 / 3)
+    pi_9 = up_n_i * y_ * Ret
+
     # NOTE: Outputs
     pi_out = utau_i * y_ * Ret
 
@@ -243,6 +251,7 @@ for idx, x_i in enumerate(x[0, :]):
     inputs_dict = {
         'u1_y_over_nu': pi_1,  # U_i[bot_index] * y_i[bot_index] / nu_i,
         'up_y_over_nu': pi_2,
+        'upn_y_over_nu': pi_9,
         'u2_y_over_nu': pi_3,
         'u3_y_over_nu': pi_4,
         'u4_y_over_nu': pi_5,
@@ -266,6 +275,7 @@ for idx, x_i in enumerate(x[0, :]):
         'nu': np.full_like(y_, 1/Ret),
         'utau': np.full_like(y_, utau_i),
         'up': np.full_like(y_, up_i),
+        'upn': up_n_i,
         'u2': U_2,
         'u3': U_3,
         'u4': U_4,
@@ -315,19 +325,19 @@ print(f"  Flow Type: {flow_type_df.shape}")
 print(f"  Unnormalized Inputs: {unnormalized_inputs_df.shape}")
 
 # --- Sanity Check ---
-print("\n--- Sanity Check: Comparing HDF5 with Original Pickle ---")
-with open('/home/yuenongling/Codes/BFM/WM_Opt/data/bub_K_data.pkl', 'rb') as f:
-    original_data = pkl.load(f)
-
-# Load corresponding data from HDF5
-inputs_hdf = inputs_df[inputs_df.index.isin(np.arange(len(original_data['inputs'])))].values
-output_hdf = output_df[output_df.index.isin(np.arange(len(original_data['output'])))].values.flatten()
-flow_type_hdf = flow_type_df[flow_type_df.index.isin(np.arange(len(original_data['flow_type'])))].values
-unnormalized_inputs_hdf = unnormalized_inputs_df[
-    unnormalized_inputs_df.index.isin(np.arange(len(original_data['unnormalized_inputs'])))].values
-
-print(f"  Inputs match: {np.allclose(original_data['inputs'], inputs_hdf)}")
-print(f"  Output match: {np.allclose(original_data['output'], output_hdf)}")
-print(f"  Flow type match: {np.array_equal(original_data['flow_type'].astype(str), flow_type_hdf.astype(str))}")
-print(
-    f"  Unnormalized inputs match: {np.allclose(original_data['unnormalized_inputs'].flatten(), unnormalized_inputs_hdf.flatten(), rtol=1e-5, atol=1e-4)}")
+# print("\n--- Sanity Check: Comparing HDF5 with Original Pickle ---")
+# with open('/home/yuenongling/Codes/BFM/WM_Opt/data/bub_K_data.pkl', 'rb') as f:
+#     original_data = pkl.load(f)
+#
+# # Load corresponding data from HDF5
+# inputs_hdf = inputs_df[inputs_df.index.isin(np.arange(len(original_data['inputs'])))].values
+# output_hdf = output_df[output_df.index.isin(np.arange(len(original_data['output'])))].values.flatten()
+# flow_type_hdf = flow_type_df[flow_type_df.index.isin(np.arange(len(original_data['flow_type'])))].values
+# unnormalized_inputs_hdf = unnormalized_inputs_df[
+#     unnormalized_inputs_df.index.isin(np.arange(len(original_data['unnormalized_inputs'])))].values
+#
+# print(f"  Inputs match: {np.allclose(original_data['inputs'], inputs_hdf)}")
+# print(f"  Output match: {np.allclose(original_data['output'], output_hdf)}")
+# print(f"  Flow type match: {np.array_equal(original_data['flow_type'].astype(str), flow_type_hdf.astype(str))}")
+# print(
+#     f"  Unnormalized inputs match: {np.allclose(original_data['unnormalized_inputs'].flatten(), unnormalized_inputs_hdf.flatten(), rtol=1e-5, atol=1e-4)}")

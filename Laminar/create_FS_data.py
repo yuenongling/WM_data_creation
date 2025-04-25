@@ -118,6 +118,7 @@ def process_and_save_profiles(profiles_list, region_name, output_data_dir):
             all_inputs_rows.append({
                 'u1_y_over_nu': U_sel[i] * y_sel[i] / nu_sel[i],
                 'up_y_over_nu': up_val * y_sel[i] / nu_sel[i],
+                'upn_y_over_nu': 0 * up_val * y_sel[i] / nu_sel[i],
                 'u2_y_over_nu': U2[i] * y_sel[i] / nu_sel[i],
                 'u3_y_over_nu': U3[i] * y_sel[i] / nu_sel[i],
                 'u4_y_over_nu': U4[i] * y_sel[i] / nu_sel[i],
@@ -128,7 +129,7 @@ def process_and_save_profiles(profiles_list, region_name, output_data_dir):
             all_output_rows.append({'utau_y_over_nu': u_tau * y_sel[i] / nu_sel[i]})
             all_unnormalized_inputs_rows.append({
                 'y': y_sel[i], 'u1': U_sel[i], 'nu': nu_sel[i], 'utau': u_tau,
-                'up': up_val, 'u2': U2[i], 'u3': U3[i], 'u4': U4[i],
+                'up': up_val, 'upn': np.zeros_like(up_val), 'u2': U2[i], 'u3': U3[i], 'u4': U4[i],
                 'dudy1': dudy1[i], 'dudy2': dudy2[i], 'dudy3': dudy3[i]
             })
 

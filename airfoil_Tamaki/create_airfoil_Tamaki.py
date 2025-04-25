@@ -1,325 +1,572 @@
-import matplotlib.pyplot as plt
-import numpy as np
-import sys
-import pickle as pkl
-import pandas as pd
 import os
-import re
+import numpy as np
+import pandas as pd
+import pickle as pkl
+import matplotlib.pyplot as plt
+
+import sys
+save_data = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+REYNOLDS_NUMBER = 10_000_000 if len(sys.argv) > 2 else 2_000_000
 
 # --- Set up paths and constants ---
 from data_processing_utils import find_k_y_values, import_path
 WM_DATA_PATH = import_path()  # Ensure the BFM_PATH and subdirectories are in the system path
-savedatapath = os.path.join(WM_DATA_PATH, 'data')
-dir = os.path.join(WM_DATA_PATH, 'airfoil_Tamaki', '10M')
-# Investigate x that are available in the tamaki dataset
-# x_to_investigate = np.array([0.05, 0.08, 0.10, 0.15, 0.20, 0.30, 0.50, 0.70, 0.825, 0.870, 0.930, 0.990])
-x_to_investigate = np.array([0.2, 0.7, 0.825, 0.87])
-Re = 10_000_000
+# --- Configuration ---
+# (Assume these are defined elsewhere in your code)
+STATS_PATH = os.path.join(WM_DATA_PATH, "airfoil_Tamaki", f"{REYNOLDS_NUMBER//1_000_000}M")
+WALL_GEO_PATH = os.path.join(WM_DATA_PATH, "airfoil_Tamaki", "airfoil.txt")
+OUTPUT_PATH = os.path.join(WM_DATA_PATH, "data")
 
-UP_FRAC = 0.20
-DOWN_FRAC = 0.01
+UPPER_FRACTION = 0.2
+LOWER_FRACTION = 0.01
+UPPER_FRACTION_SEP = 0.1
+LOWER_FRACTION_SEP = 0.003
 
-# NOTE: Function used for calculating directional derivative of pressure 
+# --- Select whether to save data and which points to inspect ---
+inspect_x = []
+
+# --- Utility Functions ---
+def load_bump_data(filename):
+    """Loads bump data from a pickle file."""
+
+    file_path = os.path.join(STATS_PATH, filename)
+    with open(file_path, "rb") as f:
+        data = pkl.load(f)
+    return data
+
+def calculate_up(dpds, reynolds_number):
+    """Calculates the pressure gradient velocity scale."""
+    return np.sign(dpds) * (np.abs(dpds) / reynolds_number) ** (1 / 3)
+
+def load_cf_cp_data():
+    """Loads Cf, Cp, and delta data from text files."""
+
+    data = np.loadtxt(os.path.join(STATS_PATH, "surface_data.txt"), comments='#', skiprows=4)
+
+    X = data[:, 0]  # First column: x coordinates
+    cf_data = data[:, 2]  # First two columns: x, Cf
+    cp_data = data[:, 1]  # Next two columns: x, Cp
+
+    return X, cf_data, cp_data
+
+
 def calculate_directional_derivative(f_values, curve_points):
-    """
-    Calculate the directional derivative of function values along a curve.
-    
-    Parameters:
-    f_values (np.ndarray): Function values at points along the curve
-    curve_points (np.ndarray): Points along the curve where function is evaluated
-                              Shape should be (n, dim) where n is number of points
-                              and dim is the dimension of the space
-    
-    Returns:
-    np.ndarray: Directional derivative values along the curve
-    """
-    # Calculate arc length between consecutive points
-    arc_lengths = np.sqrt(np.sum(np.diff(curve_points, axis=0)**2, axis=1))
-    
-    # Calculate cumulative arc length
+    """Calculates the directional derivative of f along a curve."""
+
+    arc_lengths = np.sqrt(np.sum(np.diff(curve_points, axis=0) ** 2, axis=1))
     cum_arc_length = np.concatenate(([0], np.cumsum(arc_lengths)))
-    
-    # Calculate gradient of function values with respect to arc length
     directional_derivative = np.gradient(f_values, cum_arc_length)
-    
     return directional_derivative
 
 
-# First read surface data
-surface_data = np.loadtxt(dir+f'/surface_data.txt', skiprows=1)
-# NOTE: Delete data from the pressure side
-# Integral boundary layer parameters are blank for the pressure side
-surface_data = surface_data[np.where(surface_data[:,2] > 0)]
-x_surf = surface_data[:,0]
-Cp = surface_data[:,1]
-def gaussian_kernel(x, xi, bandwidth):
-    """
-    Gaussian kernel function.
-    
-    Parameters:
-    x (float): The point at which the kernel is evaluated.
-    xi (float): The center of the kernel.
-    bandwidth (float): The bandwidth of the kernel (controls the spread).
-    
-    Returns:
-    float: The value of the Gaussian kernel at x.
-    """
-    return np.exp(-0.5 * ((x - xi) / bandwidth) ** 2) / (bandwidth * np.sqrt(2 * np.pi))
-def local_gaussian_smooth(x, y, bandwidth=0.1):
-    """
-    Perform local Gaussian smoothing on the data.
-    
-    Parameters:
-    x (array-like): The independent variable values.
-    y (array-like): The dependent variable values.
-    bandwidth (float): The bandwidth of the Gaussian kernel (default is 1.0).
-    
-    Returns:
-    y_smooth (array): The smoothed dependent variable values.
-    """
-    x = np.array(x)
-    y = np.array(y)
-    y_smooth = np.zeros_like(y)
-    
-    for i, xi in enumerate(x):
-        # Compute the Gaussian weights for all points
-        weights = gaussian_kernel(x, xi, bandwidth)
-        
-        # Normalize the weights
-        weights /= np.sum(weights)
-        
-        # Compute the smoothed value as a weighted average
-        y_smooth[i] = np.sum(weights * y)
-    
-    return y_smooth
+def interpolate_values(x, x_original, values):
+    """Interpolates values at given x locations."""
+    return np.interp(x, x_original, values)
 
-# NOTE: Get airfoil shape
-airfoil_shape = np.loadtxt(dir+'/airfoil.txt', skiprows=1)
-x_air = airfoil_shape[:,0]
-y_air = airfoil_shape[:,1]
-# NOTE: This is because at the trailing edge, there are some points below the x-axis
-# up_idx = np.where(y_air > 0)[0] 
-y_air = y_air[350:]
-x_air = x_air[350:]
 
-y_surf = np.interp(x_surf, x_air, y_air)
+def calculate_wall_normal_distance(x_normal, y_normal):
+    """Calculates the wall-normal distance."""
+
+    dist_normal = np.sqrt(
+        (x_normal - x_normal[:, 0][:, np.newaxis]) ** 2
+        + (y_normal - y_normal[:, 0][:, np.newaxis]) ** 2
+    )
+    return dist_normal
+
+import numpy as np
+
+def calculate_tangents_normals(x_coords, y_coords):
+    """
+    Calculates unit tangent and unit normal vectors for a curve defined by
+    x and y coordinates using numpy.gradient.
+
+    Args:
+        x_coords (np.ndarray): 1D array of x-coordinates.
+        y_coords (np.ndarray): 1D array of y-coordinates (must be same length as x).
+
+    Returns:
+        tuple: (unit_tangents, unit_normals)
+               - unit_tangents (np.ndarray): Array of shape (N, 2) with unit tangent vectors (tx, ty).
+               - unit_normals (np.ndarray): Array of shape (N, 2) with unit normal vectors (nx, ny).
+                                            Normal is calculated as a 90-degree counter-clockwise
+                                            rotation of the tangent.
+    """
+    # Calculate derivatives using central differences where possible
+    dx = np.gradient(x_coords)
+    dy = np.gradient(y_coords)
+
+    # Calculate magnitude of the tangent vector
+    magnitude = np.sqrt(dx**2 + dy**2)
+
+    # --- Handle potential zero magnitude cases ---
+    # Find indices where magnitude is close to zero
+    zero_mag_indices = np.isclose(magnitude, 0)
+    if np.any(zero_mag_indices):
+        print(f"Warning: Magnitude is close to zero at {np.sum(zero_mag_indices)} points. "
+              "Tangent/normal are ill-defined there. Setting them to [NaN, NaN].")
+        dx[zero_mag_indices] = np.nan
+        dy[zero_mag_indices] = np.nan
+        magnitude[zero_mag_indices] = np.nan # Ensure NaNs propagate
+
+    # --- Calculate Unit Tangent ---
+    # Suppress division-by-zero warnings temporarily for the zero magnitude case
+    with np.errstate(invalid='ignore', divide='ignore'):
+        unit_tangent_x = dx / magnitude
+        unit_tangent_y = dy / magnitude
+
+    unit_tangents = np.column_stack((unit_tangent_x, unit_tangent_y))
+
+    # --- Calculate Unit Normal (counter-clockwise rotation of tangent) ---
+    # Normal vector = (-dy, dx)
+    with np.errstate(invalid='ignore', divide='ignore'):
+        unit_normal_x = -dy / magnitude
+        unit_normal_y = dx / magnitude
+
+    unit_normals = np.column_stack((unit_normal_x, unit_normal_y))
+
+    return unit_tangents, unit_normals
+
+
+def calculate_bump_parallel_velocity(X, Y, u_velocity, v_velocity):
+    """Calculates the velocity component parallel to the bump."""
+
+    # norm_vec = np.array(
+    #     [
+    #         [x_normal[i, 1] - x_normal[i, 0], y_normal[i, 1] - y_normal[i, 0]]
+    #         / calculate_wall_normal_distance(x_normal, y_normal)[i, 1]
+    #         for i in range(x_normal.shape[0])
+    #     ]
+    # )
+    # tan_vec = np.array([[norm_vec[i, 1], -norm_vec[i, 0]] for i in range(x_normal.shape[0])])
+
+    u_mag = np.sum(
+        np.stack((u_velocity, v_velocity), axis=-1) * tan_vec[:, np.newaxis, :], axis=-1
+    )
+    return u_mag
+
+def calculate_wall_normal_distance(x_normal, y_normal):
+    """Calculates the wall-normal distance."""
+    return np.sqrt(
+        (x_normal - x_normal[:, 0][:, np.newaxis]) ** 2
+        + (y_normal - y_normal[:, 0][:, np.newaxis]) ** 2
+    )
+
+
+def calculate_pi_groups(
+    dist_normal, up, upn, kinematic_viscosity, u_interp_1, u_interp_2, u_interp_3, u_interp_4, dudy_1, dudy_2, dudy_3
+):
+    """Calculates the dimensionless Pi groups."""
+    return {
+        "u1_y_over_nu": u_interp_1 * dist_normal / kinematic_viscosity,
+        "up_y_over_nu": up * dist_normal / kinematic_viscosity,  # up is already scaled by nu
+        "upn_y_over_nu": upn * dist_normal / kinematic_viscosity,  # up is already scaled by nu
+        "u2_y_over_nu": u_interp_2 * dist_normal / kinematic_viscosity,
+        "u3_y_over_nu": u_interp_3 * dist_normal / kinematic_viscosity,
+        "u4_y_over_nu": u_interp_4 * dist_normal / kinematic_viscosity,
+        "dudy1_y_pow2_over_nu": dudy_1 * dist_normal**2
+        / kinematic_viscosity,
+        "dudy2_y_pow2_over_nu": dudy_2 * dist_normal**2
+        / kinematic_viscosity,
+        "dudy3_y_pow2_over_nu": dudy_3 * dist_normal**2
+        / kinematic_viscosity,
+    }
+
+
+def calculate_output(utau_interpolated, dist_normal, kinematic_viscosity):
+    """Calculates the output feature."""
+    utau = np.abs(utau_interpolated)
+    return {"utau_y_over_nu": utau * dist_normal / kinematic_viscosity}
+
+
+def calculate_unnormalized_inputs(
+    dist_normal, kinematic_viscosity, utau, up, upn, u_interp_1, u_interp_2, u_interp_3, u_interp_4, dudy_1, dudy_2, dudy_3
+):
+    """Calculates the unnormalized input features."""
+    return {
+        "y": dist_normal,
+        "u1": u_interp_1,
+        "nu": np.full_like(dist_normal, kinematic_viscosity),
+        "utau": np.full_like(dist_normal, utau),
+        "dpdx": np.full_like(dist_normal, up),
+        "upn": upn,
+        "u2": u_interp_2,
+        "u3": u_interp_3,
+        "u4": u_interp_4,
+        "dudy1": dudy_1, 
+        "dudy2": dudy_2,
+        "dudy3": dudy_3,
+    }
+
+
+def calculate_flow_type(x_normal, delta, region, kinematic_viscosity, num_points):
+    """Calculates flow type information."""
+    return {
+        "case_name": [region] * num_points,
+        "nu": [kinematic_viscosity] * num_points,
+        "x": x_normal,
+        "delta": [delta] * num_points,
+        "albert": [0] * num_points,  # Placeholder
+    }
+
+
+def save_to_hdf5(data_dict, filename):
+    """Saves the data dictionary to an HDF5 file."""
+
+    try:
+        inputs_df = data_dict["inputs"]
+        output_df = data_dict["output"]
+        flow_type_df = data_dict["flow_type"]
+        unnormalized_inputs_df = data_dict["unnormalized_inputs"]
+
+        output_filename = os.path.join(OUTPUT_PATH, filename + ".h5")
+        inputs_df.to_hdf(output_filename, key="inputs", mode="w", format="fixed")
+        output_df.to_hdf(output_filename, key="output", mode="a", format="fixed")
+        flow_type_df.to_hdf(output_filename, key="flow_type", mode="a", format="table")
+        unnormalized_inputs_df.to_hdf(
+            output_filename, key="unnormalized_inputs", mode="a", format="fixed"
+        )
+        print(f"Data saved to {output_filename}")
+    except Exception as e:
+        print(f"Error saving data: {e}")
+
+
+def process_and_save_region_data(
+    p,
+    u_mag,
+    utau_interpolated,
+    x_normal, # X coordinates of the wall
+    S, # Wall-normal distance
+    delta,
+    up,
+    region,
+    ind_start,
+    ind_end,
+    up_frac=UPPER_FRACTION,
+    down_frac=LOWER_FRACTION,
+    save_plots=False,
+):
+    """
+    Processes data for a specified region and saves it to an HDF5 file.
+
+    Args:
+        ... (same as before)
+    """
+
+    # WARNING: Fix delta to be unit normal distance
+
+    all_inputs_data = []
+    all_output_data = []
+    all_flow_type_data = []
+    all_unnormalized_inputs_data = []
+    kinematic_viscosity = 1 / REYNOLDS_NUMBER
+
+    for i in range(ind_start, ind_end):
+
+        delta_i = delta[i]
+
+        # if region == 'APG' and up[i] < 0:
+        #     continue
+
+        dist_normal_i = S[i]
+        idx_low_bl_i = np.where(dist_normal_i > down_frac * delta_i)[0][0]
+        idx_up_bl_i = np.where(dist_normal_i <= up_frac * delta_i)[0][-1]
+
+        if idx_low_bl_i >= idx_up_bl_i:
+            print(f"Skipping region x={x_normal[i, 0]} due to invalid indices: ")
+            continue
+
+        u_interp_1 = interpolate_values(
+            dist_normal_i[idx_low_bl_i:idx_up_bl_i], dist_normal_i[1:], u_mag[i, :]
+        )
+        u_interp_2 = find_k_y_values(dist_normal_i[idx_low_bl_i:idx_up_bl_i], u_mag[i, :], dist_normal_i[1:], k=1)
+        u_interp_3 = find_k_y_values(dist_normal_i[idx_low_bl_i:idx_up_bl_i], u_mag[i, :], dist_normal_i[1:], k=2)
+        u_interp_4 = find_k_y_values(dist_normal_i[idx_low_bl_i:idx_up_bl_i], u_mag[i, :], dist_normal_i[1:], k=3)
+        # note: velocity gradient
+        dudy = np.gradient(u_mag[i,:], dist_normal_i[1:])
+        dudy_1 = dudy[idx_low_bl_i-1:idx_up_bl_i-1]
+        dudy_2 = find_k_y_values(dist_normal_i[idx_low_bl_i:idx_up_bl_i], dudy, dist_normal_i[1:], k=1)
+        dudy_3 = find_k_y_values(dist_normal_i[idx_low_bl_i:idx_up_bl_i], dudy, dist_normal_i[1:], k=2)
+
+        delta_p = (p[i, :] - p[i, 0]) / (dist_normal_i - dist_normal_i[0])
+        upn = calculate_up(delta_p, REYNOLDS_NUMBER)
+
+        pi_groups = calculate_pi_groups(
+            dist_normal_i[idx_low_bl_i:idx_up_bl_i],
+            up[i],
+            upn[idx_low_bl_i:idx_up_bl_i],
+            kinematic_viscosity,
+            u_interp_1,
+            u_interp_2,
+            u_interp_3,
+            u_interp_4,
+            dudy_1,
+            dudy_2,
+            dudy_3,
+        )
+        all_inputs_data.append(pd.DataFrame(pi_groups))
+
+        output_data = calculate_output(
+            utau_interpolated[i], dist_normal_i[idx_low_bl_i:idx_up_bl_i], kinematic_viscosity
+        )
+        all_output_data.append(pd.DataFrame(output_data))
+
+        unnormalized_inputs_data = calculate_unnormalized_inputs(
+            dist_normal_i[idx_low_bl_i:idx_up_bl_i],
+            kinematic_viscosity,
+            utau_interpolated[i],
+            up[i],
+            upn[idx_low_bl_i:idx_up_bl_i],
+            u_interp_1,
+            u_interp_2,
+            u_interp_3,
+            u_interp_4,
+            dudy_1,
+            dudy_2,
+            dudy_3,
+        )
+        all_unnormalized_inputs_data.append(pd.DataFrame(unnormalized_inputs_data))
+
+        flow_type_data = calculate_flow_type(
+            x_normal[i, 0],
+            delta_i,
+            region,
+            kinematic_viscosity,
+            len(u_interp_1),
+        )
+        all_flow_type_data.append(pd.DataFrame(flow_type_data))
+
+    # Concatenate dataframes
+    inputs_df = pd.concat(all_inputs_data, ignore_index=True)
+    output_df = pd.concat(all_output_data, ignore_index=True)
+    flow_type_df = pd.concat(all_flow_type_data, ignore_index=True)
+    unnormalized_inputs_df = pd.concat(all_unnormalized_inputs_data, ignore_index=True)
+
+    # # Find rows with NaN values in inputs_df
+    # nan_rows = inputs_df.isna().any(axis=1)
+    #
+    # # Get the indices of rows without NaN values
+    # valid_indices = inputs_df.index[~nan_rows]
+
+    # # Clean all DataFrames by selecting only valid indices
+    # inputs_df = inputs_df.loc[valid_indices].copy()
+    # output_df = output_df.loc[valid_indices].copy()
+    # flow_type_df = flow_type_df.loc[valid_indices].copy()
+    # unnormalized_inputs_df = unnormalized_inputs_df.loc[valid_indices].copy()
+
+    data_dict = {
+        "inputs": inputs_df,
+        "output": output_df,
+        "flow_type": flow_type_df,
+        "unnormalized_inputs": unnormalized_inputs_df,
+    }
+
+    save_to_hdf5(data_dict, f"aairfoil_{REYNOLDS_NUMBER//1_000_000}M_data")
+
+def calculate_tangent_normal_velocity(u, v, unit_tangents, unit_normals):
+    """
+    Calculates velocity components tangential and normal to a curve.
+
+    Args:
+        u (np.ndarray): Velocity component(s) in x-direction.
+                        Can be scalar, 1D array, or 2D array (e.g., M profiles x N points).
+        v (np.ndarray): Velocity component(s) in y-direction. Must have the same shape as u.
+        unit_tangents (np.ndarray): Unit tangent vectors [tx, ty].
+                                   Shape should be (2,) for single vector, or (M, 2) for M vectors
+                                   corresponding to M profiles/points in u/v.
+        unit_normals (np.ndarray): Unit normal vectors [nx, ny].
+                                  Shape should be (2,) or (M, 2).
+
+    Returns:
+        tuple: (vel_tangent, vel_normal)
+               - vel_tangent (np.ndarray): Velocity component(s) parallel to the tangent vector(s).
+                                          Same shape as u and v.
+               - vel_normal (np.ndarray): Velocity component(s) parallel to the normal vector(s).
+                                         Same shape as u and v.
+    """
+    u = np.asarray(u)
+    v = np.asarray(v)
+    unit_tangents = np.asarray(unit_tangents)
+    unit_normals = np.asarray(unit_normals)
+
+    if u.shape != v.shape:
+        raise ValueError("u and v must have the same shape")
+
+    # Determine shapes for broadcasting
+    if u.ndim == 0: # Scalar u, v
+        if unit_tangents.shape != (2,) or unit_normals.shape != (2,):
+             raise ValueError("For scalar u/v, tangents/normals must be single vectors of shape (2,)")
+        tx, ty = unit_tangents
+        nx, ny = unit_normals
+    elif u.ndim == 1: # 1D array u, v (e.g., velocity along one line)
+        if unit_tangents.shape == (2,) and unit_normals.shape == (2,):
+            # Single tangent/normal applied to all points
+            tx, ty = unit_tangents
+            nx, ny = unit_normals
+        elif unit_tangents.shape == u.shape + (2,) and unit_normals.shape == u.shape + (2,):
+             # Different tangent/normal for each point in u/v (less common)
+             tx = unit_tangents[:, 0]
+             ty = unit_tangents[:, 1]
+             nx = unit_normals[:, 0]
+             ny = unit_normals[:, 1]
+        else:
+            raise ValueError(f"Shapes mismatch for 1D u/v ({u.shape}): tangents ({unit_tangents.shape}), normals ({unit_normals.shape})")
+    elif u.ndim == 2: # 2D array u, v (e.g., M profiles, N points)
+        M, N = u.shape
+        if unit_tangents.shape == (M, 2) and unit_normals.shape == (M, 2):
+             # Tangent/normal defined per profile (M vectors), broadcast across N points
+             tx = unit_tangents[:, 0:1] # Shape (M, 1) for broadcasting
+             ty = unit_tangents[:, 1:2] # Shape (M, 1)
+             nx = unit_normals[:, 0:1] # Shape (M, 1)
+             ny = unit_normals[:, 1:2] # Shape (M, 1)
+        elif unit_tangents.shape == (2,) and unit_normals.shape == (2,):
+             # Single tangent/normal applied to all profiles/points
+             tx, ty = unit_tangents
+             nx, ny = unit_normals
+        else:
+             raise ValueError(f"Shapes mismatch for 2D u/v ({u.shape}): tangents ({unit_tangents.shape}), normals ({unit_normals.shape})")
+    else:
+        raise ValueError("u and v must be scalar, 1D, or 2D arrays")
+
+
+    # Calculate projections using dot product (element-wise multiplication and sum)
+    vel_tangent = u * tx + v * ty
+    vel_normal = u * nx + v * ny
+
+    return vel_tangent, vel_normal
+
+
+"""Main function to process and save data for different regions of the bump."""
+
+# Load data
+data = load_bump_data("wall_normal_profiles.pkl")
+
+# WARNING: This is outdated; previously read in two files, now merged into one
+# data_aft = load_bump_data("wall_normal_profiles_aft.pkl")
+# data = data | data_aft # Merge dictionaries
+
+
+x_cfcp, cf_data, cp_data = load_cf_cp_data()
+
+# Load coordinates
+coord = np.loadtxt(WALL_GEO_PATH, skiprows=1)
+coord = coord[coord[:, 1] >= 0.0]  # Filter out points with y <= 0
+X = coord[:, 0]
+Y = coord[:, 1]
+
+# Quick sanity check
+#
+# PLOT: Contour plot of the velocity field
+# plt.plot(X,Y)
+# for key in data.keys():
+#     x_norm = data[key]['x_norm']
+#     y_norm = data[key]['y_norm']
+#     plt.plot(x_norm,y_norm)
+# plt.gca().set_aspect('equal')
+# plt.show()
+#
+# PLOT: velocity profiles
+# for key in data.keys():
+#   s_dist = data[key]['s']
+#   u_profile = data[key]['u']
+#   plt.plot(u_profile,s_dist)
+# plt.show()
+
+x_normal = []
+y_normal = []
+u_velocity = []
+v_velocity = []
+s_dist = []
+p = []  # Placeholder for pressure gradient, not used in this script
+
+for key in data.keys():
+    x_normal.append(data[key]['x_norm'])
+    y_normal.append(data[key]['y_norm'])
+    u_velocity.append(data[key]['u'])
+    v_velocity.append(data[key]['v'])
+    s_dist.append(data[key]['s'])
+    p.append(data[key]['p'])  # Pressure gradient, not used in this script
+x_normal = np.array(x_normal)
+y_normal = np.array(y_normal)
+u_velocity = np.array(u_velocity)
+v_velocity = np.array(v_velocity)
+s_dist = np.array(s_dist)
+p = np.array(p)
+
+Uo = 1.00  # Free stream velocity assumed to be 1
+
+# Extract relevant fields
+cf_interpolated = interpolate_values(x_normal[:, 0], x_cfcp, cf_data)
+utau_interpolated = np.sqrt(np.abs(cf_interpolated) / 2) * Uo
+
+# Wall parallel pressure gradient
+x_cp = x_cfcp
+y_cp = interpolate_values(x_cp, X, Y)
+x_cp_coord = np.vstack([x_cp, y_cp]).T
 
 # Read delta_99 data
-delta_99 = np.loadtxt(dir+f'/Delta99.csv', delimiter=',', skiprows=0)
+delta_99 = np.loadtxt(STATS_PATH+f'/Delta99.csv', delimiter=',', skiprows=0)
+delta_interpolated = interpolate_values(x_normal[:, 0], delta_99[:, 0], delta_99[:, 1])
 
-# Define a data dictionary
-data_tamaki = {}
+dpds_wall_all = calculate_directional_derivative(
+    cp_data, x_cp_coord
+) * 0.5*Uo**2
+dpds_wall = interpolate_values(x_normal[:, 0], x_cp, dpds_wall_all)
+up = calculate_up(dpds_wall, REYNOLDS_NUMBER)
 
-delta_99_x = np.interp(x_to_investigate, delta_99[:,0], delta_99[:,1])
+tan, nor = calculate_tangents_normals(X, Y)
+tan_local = np.vstack([interpolate_values(x_normal[:, 0], X, tan[:,0]),
+                      interpolate_values(x_normal[:, 0], X, tan[:,1])]).T
+nor_local = np.vstack([interpolate_values(x_normal[:, 0], X, nor[:,0]),
+                      interpolate_values(x_normal[:, 0], X, nor[:,1])]).T
 
-all_inputs_data = []
-all_output_data = []
-all_flow_type_data = []
-all_unnormalized_inputs_data = []
+u_mag, v_mag = calculate_tangent_normal_velocity(u_velocity, v_velocity, 
+                                                 tan_local, nor_local)
 
-for idx, x in enumerate(x_to_investigate):
+# Crop out zero velocity/distances
+u_mag = u_mag[:,1:]
+# s_dist = s_dist[:,1:]
 
-    if x < 0.10:
-        fname = dir+f'/profile_00{x*100:.0f}.0.txt'
-    elif x == 0.825:
-        fname = dir+f'/profile_082.5.txt'
-    else:
-        fname = dir+f'/profile_0{x*100:.0f}.0.txt'
-    print(f'Investigating {fname}...')
+if save_data:
+    process_and_save_region_data(
+        p,
+        u_mag,
+        utau_interpolated,
+        x_normal, # X coordinates of the wall
+        s_dist, # Wall-normal distance
+        delta_interpolated,
+        up,
+        'airfoil',
+        0, 
+        len(u_mag)-1,
+        up_frac=UPPER_FRACTION,
+        down_frac=LOWER_FRACTION,
+        save_plots=False,
+    )
 
-    data = np.loadtxt(fname, skiprows=1)
+if len(inspect_x) > 0:
+    for x in inspect_x:
+        ind = np.argmin(np.abs(x_normal[:, 0] - x))
+        print(f"Inspecting point at x={x_normal[ind, 0]}")
+        plt.figure(figsize=(10, 6))
+        plt.plot(s_dist[ind, 1:], u_mag[ind, :], label='u_mag')
+        # plt.plot(s_dist[ind, 1:], v_mag[ind, :], label='v_mag')
+        plt.xlabel('Wall-normal distance (s)')
+        plt.ylabel('Velocity')
+        plt.title(f'Velocity profiles at x={x_normal[ind, 0]}')
+        plt.legend()
+        plt.grid()
 
-    if idx == 0:
-        yc = np.zeros((data.shape[0],x_to_investigate.shape[0]))
-        U = np.zeros((data.shape[0],x_to_investigate.shape[0]))
-        yplus = np.zeros((data.shape[0],x_to_investigate.shape[0]))
-        uplus = np.zeros((data.shape[0],x_to_investigate.shape[0]))
-        dpds  = np.zeros((data.shape[0],x_to_investigate.shape[0]))
+        # Add log law
+        # Plot in plus units
+        fig, ax = plt.subplots(figsize=(10, 6))
+        u_plus = u_mag[ind, :] / utau_interpolated[ind]
+        s_dist_p = s_dist[ind, 1:] * REYNOLDS_NUMBER * utau_interpolated[ind]
+        ax.semilogx(s_dist_p, u_plus, label='u+')
+        y_plus = np.linspace(100, 1000, 100)
+        u_plus_law = 1 / 0.41 * np.log(y_plus) + 5.2
+        ax.semilogx(y_plus, u_plus_law, 'r--', label='Log Law')
+        ax.set_xlabel('Wall-normal distance (s+)')
+        ax.set_ylabel('Velocity (u+)')
+        ax.legend()
 
-        # Inputs and outputs for the wall model
-        pi_1  = np.zeros((data.shape[0],x_to_investigate.shape[0]))
-        up  = np.zeros((data.shape[0],x_to_investigate.shape[0]))
-        pi_2  = np.zeros((data.shape[0],x_to_investigate.shape[0]))
-        pi_3  = np.zeros((data.shape[0],x_to_investigate.shape[0]))
-        pi_4  = np.zeros((data.shape[0],x_to_investigate.shape[0]))
-        pi_5  = np.zeros((data.shape[0],x_to_investigate.shape[0]))
-        output  = np.zeros((data.shape[0],x_to_investigate.shape[0]))
-
-        # Surface data and BL data
-        Cp = np.zeros((x_to_investigate.shape[0],))
-        Cf = np.zeros((x_to_investigate.shape[0],))
-        H  = np.zeros((x_to_investigate.shape[0],))
-        Re_theta = np.zeros((x_to_investigate.shape[0],))
-        Re_delta_star = np.zeros((x_to_investigate.shape[0],))
-        utau = np.zeros((x_to_investigate.shape[0],))
-
-        # An index to record the approximate boundary layer thickness
-        idx_bl = np.zeros((x_to_investigate.shape[0],), dtype=int)
-        idx_bl_quarter = np.zeros((x_to_investigate.shape[0],), dtype=int)
-        idx_bl_low = np.zeros((x_to_investigate.shape[0],), dtype=int)
-
-
-    yc[:, idx] = data[:,0]
-    U[:, idx] = data[:,1]
-
-    if Re == 10_000_000:
-        yplus[:, idx] = data[:,-2]
-        uplus[:, idx] = data[:,-1]
-
-
-    # Also record the final index with increasing U (an approximation for boundary layer thickness)
-    idx_bl[idx] = int(np.where(yc > delta_99_x[idx])[0][0])
-
-    # Find 0.08 boundary layer thickness indices
-    idx_bl_quarter[idx] = int(np.where(yc[:, idx] > UP_FRAC *yc[int(idx_bl[idx]), idx])[0][0])
-    # Find 0.02 boundary layer thickness indices
-    idx_bl_low[idx] = int(np.where(yc[:, idx] > DOWN_FRAC *yc[int(idx_bl[idx]), idx])[0][0])
-
-    # NOTE: Here is the "old" way of calculating dpds
-    # It is at x/delta = 0.05, which might not be the best location
-    if x < 0.10:
-        fname = dir+f'/u_budget_00{x*100:.0f}.0.txt'
-    elif x == 0.825:
-        fname = dir+f'/u_budget_082.5.txt'
-    else:
-        fname = dir+f'/u_budget_0{x*100:.0f}.0.txt'
-    # WARNING: There seem to be a mis label of pressure gradient in budget file...
-    # Need to recheck
-    dpds[:, idx] = np.loadtxt(fname, skiprows=1)[:, -3]
-
-    # Surface data
-    surface_idx = np.argmin(abs(surface_data[:, 0] - x))
-    Cp[idx] = surface_data[surface_idx, 1]
-    Cf[idx] = surface_data[surface_idx, 2]
-    H[idx] = surface_data[surface_idx, 3]
-    Re_theta[idx] = surface_data[surface_idx, 4]
-    Re_delta_star[idx] = surface_data[surface_idx, 5]
-
-    # NOTE: Calculate the utau based on plus values (Only works for 10M data)
-    avg_utau  =  yplus[10:50, idx] / yc[10:50, idx] /  Re
-    print(np.std(avg_utau))
-    if np.std(avg_utau) > 0.1:
-        raise ValueError('Standard deviation of utau is too high')
-    utau[idx] = avg_utau.mean()
-
-
-    # Chord-based Reynolds number
-    # Calcualte u_1 = U * yc * Re
-    pi_1[:, idx] = U[:, idx] * yc[:, idx] * Re
-    up[:, idx] = np.sign(dpds[0, idx]) * (abs(dpds[0, idx]) / Re)**(1/3)
-    U_2 = find_k_y_values(yc[idx_bl_low[idx]:idx_bl_quarter[idx], idx], U[:, idx], yc[:, idx], k=1)
-    U_3 = find_k_y_values(yc[idx_bl_low[idx]:idx_bl_quarter[idx], idx], U[:, idx], yc[:, idx], k=2)
-    U_4 = find_k_y_values(yc[idx_bl_low[idx]:idx_bl_quarter[idx], idx], U[:, idx], yc[:, idx], k=3)
-    pi_2[:, idx] = up[:, idx] * yc[:, idx] * Re
-    pi_3[idx_bl_low[idx]:idx_bl_quarter[idx], idx] = U_2 * yc[idx_bl_low[idx]:idx_bl_quarter[idx], idx] * Re
-    pi_4[idx_bl_low[idx]:idx_bl_quarter[idx], idx] = U_3 * yc[idx_bl_low[idx]:idx_bl_quarter[idx], idx] * Re
-    pi_5[idx_bl_low[idx]:idx_bl_quarter[idx], idx] = U_4 * yc[idx_bl_low[idx]:idx_bl_quarter[idx], idx] * Re
-    output[:, idx] = utau[idx] * yc[:, idx] * Re 
-
-    # NOTE: Velocity gradient
-    dUdy = np.gradient(U[:, idx], yc[:, idx])
-    dudy_1 = dUdy[idx_bl_low[idx]:idx_bl_quarter[idx]]
-    dudy_2 = find_k_y_values(yc[idx_bl_low[idx]:idx_bl_quarter[idx], idx], dUdy, yc[:, idx], k=1)
-    dudy_3 = find_k_y_values(yc[idx_bl_low[idx]:idx_bl_quarter[idx], idx], dUdy, yc[:, idx], k=2)
-
-    pi_6 = dudy_1 * yc[idx_bl_low[idx]:idx_bl_quarter[idx], idx]**2 * Re
-    pi_7 = dudy_2 * yc[idx_bl_low[idx]:idx_bl_quarter[idx], idx]**2 * Re
-    pi_8 = dudy_3 * yc[idx_bl_low[idx]:idx_bl_quarter[idx], idx]**2 * Re
-
-    # --- Calculate Input Features (Pi Groups) ---
-    # Note:  dPdx is NOT zero here
-    # Calculate dimensionless inputs using safe names
-    inputs_dict = {
-        'u1_y_over_nu':         pi_1[idx_bl_low[idx]:idx_bl_quarter[idx], idx],  # U_i[bot_index] * y_i[bot_index] / nu_i,
-        'up_y_over_nu':         pi_2[idx_bl_low[idx]:idx_bl_quarter[idx], idx],
-        'u2_y_over_nu':         pi_3[idx_bl_low[idx]:idx_bl_quarter[idx], idx],
-        'u3_y_over_nu':         pi_4[idx_bl_low[idx]:idx_bl_quarter[idx], idx],
-        'u4_y_over_nu':         pi_5[idx_bl_low[idx]:idx_bl_quarter[idx], idx],
-        'dudy1_y_pow2_over_nu': pi_6,
-        'dudy2_y_pow2_over_nu': pi_7,
-        'dudy3_y_pow2_over_nu': pi_8,
-    }
-    all_inputs_data.append(pd.DataFrame(inputs_dict))
-
-    # --- Calculate Output Feature ---
-    # Output is y+ (utau * y / nu)
-    output_dict = {
-        'utau_y_over_nu': output[idx_bl_low[idx]:idx_bl_quarter[idx], idx]
-    }
-    all_output_data.append(pd.DataFrame(output_dict))
-
-    # --- Collect Unnormalized Inputs ---
-    unnorm_dict = {
-        'y': yc[idx_bl_low[idx]:idx_bl_quarter[idx], idx],
-        'u1': U[idx_bl_low[idx]:idx_bl_quarter[idx], idx],
-        'nu': np.full_like(yc[idx_bl_low[idx]:idx_bl_quarter[idx],idx], 1/Re),
-        'utau': np.full_like(yc[idx_bl_low[idx]:idx_bl_quarter[idx],idx], utau[idx]),
-        'up': np.full_like(yc[idx_bl_low[idx]:idx_bl_quarter[idx],idx], up[0, idx]),
-        'u2': U_2,
-        'u3': U_3,
-        'u4': U_4,
-        'dudy1': dudy_1,
-        'dudy2': dudy_2,
-        'dudy3': dudy_3,
-    }
-    all_unnormalized_inputs_data.append(pd.DataFrame(unnorm_dict))
-
-    # --- Collect Flow Type Information ---
-    # Using format: [case_name, reference_nu, x_coord, delta, edge_velocity]
-    # For channel flow: x=0, delta=1 (half-channel height), Ue=0 (or U_bulk if needed)
-    flow_type_dict = {
-        'case_name': [f'aairfoil_{Re//1_000_000}M'] * len(yc[idx_bl_low[idx]:idx_bl_quarter[idx]]),
-        'nu': [1/Re] * len(yc[idx_bl_low[idx]:idx_bl_quarter[idx]]),
-        'x': [x] * len(yc[idx_bl_low[idx]:idx_bl_quarter[idx]]),
-        'delta': [delta_99_x[idx]] * len(yc[idx_bl_low[idx]:idx_bl_quarter[idx]]),
-        'temp': [0] * len(yc[idx_bl_low[idx]:idx_bl_quarter[idx]])
-    }
-    # Add Retau for reference if needed, maybe as an extra column or replacing 'edge_velocity'
-    # flow_type_dict['Retau'] = [Re_num] * len(y_sel)
-    all_flow_type_data.append(pd.DataFrame(flow_type_dict))
-
-# data = {'inputs': inputs_export[1:,:], 'output': output_export[1:], 'flow_type': flow_type[1:], 'unnormalized_inputs': unnormalized_inputs[1:]}
-# with open(dir+f'AAirfoil_{int(np.floor(Re//(1_000_000)))}M_select_data.pkl', 'wb') as f:
-#     pkl.dump(data, f)
-# Concatenate data from all Re_num cases into single DataFrames
-inputs_df = pd.concat(all_inputs_data, ignore_index=True)
-output_df = pd.concat(all_output_data, ignore_index=True)
-flow_type_df = pd.concat(all_flow_type_data, ignore_index=True)
-unnormalized_inputs_df = pd.concat(all_unnormalized_inputs_data, ignore_index=True)
-
-# Save DataFrames to HDF5 file
-output_filename = os.path.join(savedatapath, 'aairfoil_10M_data.h5')
-print(f"\nSaving data to HDF5 file: {output_filename}")
-    # Use fixed format for better performance with numerical data
-inputs_df.to_hdf(output_filename, key='inputs', mode='w', format='fixed')
-output_df.to_hdf(output_filename, key='output', mode='a', format='fixed')
-unnormalized_inputs_df.to_hdf(output_filename, key='unnormalized_inputs', mode='a', format='fixed')
-# Use table format for flow_type if it contains strings, to keep them
-flow_type_df.to_hdf(output_filename, key='flow_type', mode='a', format='table')
-print("Data successfully saved.")
-
-# Print summary shapes
-print(f"Final Shapes:")
-print(f"  Inputs: {inputs_df.shape}")
-print(f"  Output: {output_df.shape}")
-print(f"  Flow Type: {flow_type_df.shape}")
-print(f"  Unnormalized Inputs: {unnormalized_inputs_df.shape}")
-
-# --- Sanity Check ---
-print("\n--- Sanity Check: Comparing HDF5 with Original Pickle ---")
-with open('/home/yuenongling/Codes/BFM/WM_Opt/data/aairfoil_10M_data.pkl', 'rb') as f:
-    original_data = pkl.load(f)
-
-# Load corresponding data from HDF5
-inputs_hdf = inputs_df[inputs_df.index.isin(np.arange(len(original_data['inputs'])))].values
-output_hdf = output_df[output_df.index.isin(np.arange(len(original_data['output'])))].values.flatten()
-flow_type_hdf = flow_type_df[flow_type_df.index.isin(np.arange(len(original_data['flow_type'])))].values
-unnormalized_inputs_hdf = unnormalized_inputs_df[
-    unnormalized_inputs_df.index.isin(np.arange(len(original_data['unnormalized_inputs'])))].values
-
-print(f"  Inputs match: {np.allclose(original_data['inputs'], inputs_hdf)}")
-print(f"  Output match: {np.allclose(original_data['output'], output_hdf)}")
-print(f"  Flow type match: {np.array_equal(original_data['flow_type'].astype(str), flow_type_hdf.astype(str))}")
-print(
-    f"  Unnormalized inputs match: {np.allclose(original_data['unnormalized_inputs'].flatten(), unnormalized_inputs_hdf.flatten(), rtol=1e-5, atol=1e-4)}")
-
+        plt.show()

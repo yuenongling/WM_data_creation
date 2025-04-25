@@ -91,6 +91,7 @@ def create_channel_flow_data_hdf5(RE_NUMS, output_dir=os.path.join(WM_DATA_PATH,
         inputs_dict = {
             'u1_y_over_nu': U_sel * y_sel / nu_sel,          # pi_1
             'up_y_over_nu': np.full_like(y_sel, dPdx),     # pi_2 (is zero for CH)
+            'upn_y_over_nu': np.full_like(y_sel, dPdx),     # pi_2 (is zero for CH)
             'u2_y_over_nu': U2 * y_sel / nu_sel,             # pi_3
             'u3_y_over_nu': U3 * y_sel / nu_sel,             # pi_4
             'u4_y_over_nu': U4 * y_sel / nu_sel,             # pi_5
@@ -113,7 +114,8 @@ def create_channel_flow_data_hdf5(RE_NUMS, output_dir=os.path.join(WM_DATA_PATH,
             'u1': U_sel,
             'nu': nu_sel,
             'utau': np.full_like(y_sel, utau),
-            'dpds': np.full_like(y_sel, dPdx), # dPdx is 0 for channel flow
+            'up': np.full_like(y_sel, dPdx), # dPdx is 0 for channel flow
+            'upn': np.full_like(y_sel, dPdx), # dPdx is 0 for channel flow
             'u2': U2,
             'u3': U3,
             'u4': U4,

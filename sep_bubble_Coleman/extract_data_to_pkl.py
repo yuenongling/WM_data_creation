@@ -83,14 +83,15 @@ print("Calculating dPdx and up from surface data...")
 dPdx = np.gradient(Cp_surf, x_surf)
 # Smooth the gradient
 dPdx_smooth = local_gaussian_smooth(x_surf, dPdx, bandwidth=0.1) # Adjust bandwidth as needed
+# WARNING: Hardcoded to not smooth
+dPdx_smooth = dPdx
 
 # NOTE: Calculate up/u_inf = sign(dPdx) * (0.5 * |dPdx/Re|)^(1/3)
 # Avoid division by zero or issues with Cf=0 if used directly
 # The formula used in the original script: sign(dPdx) * (0.5 * abs(dPdx)/Re)**(1/3)
 # Ensure dPdx_smooth is used if smoothing is desired
-with np.errstate(divide='ignore', invalid='ignore'): # Suppress potential warnings for 0/0 etc.
-     up_calc = np.sign(dPdx_smooth) * (0.5 * np.abs(dPdx_smooth) / Re)**(1/3)
-     up_calc = np.nan_to_num(up_calc) # Replace NaN with 0 if any occurred
+# with np.errstate(divide='ignore', invalid='ignore'): # Suppress potential warnings for 0/0 etc.
+up_calc = np.sign(dPdx_smooth) * (0.5 * np.abs(dPdx_smooth) / Re)**(1/3)
 
 print("dPdx and up calculated.")
 

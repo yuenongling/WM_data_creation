@@ -93,6 +93,8 @@ def process_data(cf_file, cp_file, profile_file, output_path="./"):
         
         # Find points within the boundary layer region of interest
         bot_index = np.where((y_i >= DOWN_FRAC*delta99_i) & (y_i <= UP_FRAC*delta99_i))[0]
+
+        breakpoint()
         
         if len(bot_index) < 2:
             print(f"  Skipping station {station}: not enough points in boundary layer")

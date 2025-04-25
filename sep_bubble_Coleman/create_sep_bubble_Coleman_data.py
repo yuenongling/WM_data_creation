@@ -119,7 +119,7 @@ for case_name in ['A', 'B', 'C']:
     if idx_first_sep is not None:
         print(f"Separation identified: x_indices [{idx_first_sep}, {idx_last_sep}], x_values [{x[idx_first_sep]:.3f}, {x[idx_last_sep]:.3f}]")
         # Define how many points to add around separation (e.g., 100 points before/after)
-        points_around_sep = 100
+        points_around_sep = 20
         indices_near_sep_start = np.arange(max(0, idx_first_sep - points_around_sep), idx_first_sep + points_around_sep)
         indices_near_sep_end = np.arange(max(0, idx_last_sep - points_around_sep), min(max_J, idx_last_sep + points_around_sep))
         # Combine base sampled indices and near-separation indices

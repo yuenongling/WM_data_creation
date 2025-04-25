@@ -100,6 +100,16 @@ mean_v_flat = mean_v_2d.flatten()
 print("Calculating wall slopes and normal vectors...")
 wall_slopes, wall_normals = calculate_wall_normals(x_wall, y_wall)
 
+# Sanity check: Plot wall normals
+plt.plot(x_wall, y_wall)
+plt.axis('equal')
+for i in [0, 20,30,40,50, 100, 130, 190]:
+    vec_x = np.linspace(0, 1, 10) * wall_normals[i,0]
+    vec_y = np.linspace(0, 1, 10) * wall_normals[i,1]
+    plt.plot(x_wall[i]+vec_x, y_wall[i]+vec_y, 'r-')
+plt.show()
+
+
 # --- Create Interpolator for Mean U ---
 # Create the interpolator once, as the underlying grid doesn't change
 mean_u_interpolator = create_interpolator(points, mean_u_flat)
@@ -119,8 +129,8 @@ print(f"\nSelected streamwise locations (X) for profiles: {selected_x_wall}")
 
 # --- Generate and Interpolate Profiles ---
 velocity_profiles = {} # Dictionary to store results {x_location: (s_distances, u_profile)}
-num_norm_points = 300 # Number of points along each normal line
-max_normal_dist = 1.5 # Max distance to extend normal line (adjust based on channel height, Y1=2)
+num_norm_points = 150 # Number of points along each normal line
+max_normal_dist = 1 # Max distance to extend normal line (adjust based on channel height, Y1=2)
 
 print(f"Generating {num_profiles} profiles with {num_norm_points} points up to s={max_normal_dist}...")
 
@@ -176,10 +186,20 @@ except Exception as e:
 #     plt.show()
 #
 #
-# profile_keys = list(velocity_profiles.keys())
+profile_keys = list(velocity_profiles.keys())
+
+for i, (x_loc, profile_data) in enumerate(velocity_profiles.items()):
+    plt.plot( profile_data['u'], profile_data['s'] + profile_data['y_loc'],'o-')
+    plt.title('x = {:.3f}'.format(x_loc))
+    plt.xlabel('Mean U Velocity')
+    plt.ylabel('y')
+    plt.xlim(-0.25, 1.2)
+    plt.ylim(0.0, 3.05)
+    plt.show()
+
 # if len(profile_keys) > 0:
 #     # First profile
-#     first_x = profile_keys[0]
+#     first_x = profile_keys[1]
 #     profile_data = velocity_profiles[first_x]
 #     plt.plot(profile_data['u'], profile_data['s'], 'o-', label=f'X = {first_x:.3f}', markersize=4)
 #

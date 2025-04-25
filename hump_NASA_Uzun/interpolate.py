@@ -62,7 +62,7 @@ def interpolate_data_on_line(interpolator, x_line, y_line):
 # --- Configuration ---
 pkl_filename = './stats/WallHump-WideSpan-OriginalTopWallContour.pkl' # From previous step
 wall_data_filename = './stats/CoordsCleanup.dat'
-output_profiles_filename = './stats/wall_normal_profiles.pkl'
+output_profiles_filename = './stats/wall_normal_profiles_aft.pkl'
 output_dir = "./stats/"
 
 # Ensure output directory exists
@@ -77,6 +77,7 @@ x_coords_2d = loaded_data['X']      # Shape (J, I) -> (2304, 385)
 y_coords_2d = loaded_data['Y']      # Shape (J, I)
 mean_u_2d = loaded_data['U'] # Shape (J, I)
 mean_v_2d = loaded_data['V'] # Shape (J, I)
+mean_p_2d = loaded_data['P'] # Shape (J, I)
 
 print(f"Loaded X shape: {x_coords_2d.shape}")
 print(f"Loaded Y shape: {y_coords_2d.shape}")
@@ -93,17 +94,25 @@ print(f"Loaded wall data shape: {wall_data.shape}")
 
 # Flatten coordinate and velocity data for interpolation if using griddata
 points = np.column_stack((x_coords_2d.flatten(), y_coords_2d.flatten()))
-mean_u_flat = mean_u_2d.flatten()
-mean_v_flat = mean_v_2d.flatten()
 
 # --- Calculate Wall Normals ---
 print("Calculating wall slopes and normal vectors...")
-wall_slopes, wall_normals = calculate_wall_normals(x_wall, y_wall)
+_, wall_normals = calculate_wall_normals(x_wall, y_wall)
+
+# Sanity check plot of wall normals
+plt.plot(x_wall, y_wall)
+plt.axis('equal')
+for i in [0, 20,30,40,100, 200,300,400,600]:
+    vec_x = np.linspace(0, 1, 10) * wall_normals[i,0]
+    vec_y = np.linspace(0, 1, 10) * wall_normals[i,1]
+    plt.plot(x_wall[i]+vec_x, y_wall[i]+vec_y, 'r-')
+plt.show()
 
 # --- Create Interpolator for Mean U ---
 # Create the interpolator once, as the underlying grid doesn't change
-mean_u_interpolator = create_interpolator(points, mean_u_flat)
-mean_v_interpolator = create_interpolator(points, mean_v_flat)
+mean_u_interpolator = create_interpolator(points, mean_u_2d)
+mean_v_interpolator = create_interpolator(points, mean_v_2d)
+mean_p_interpolator = create_interpolator(points, mean_p_2d)
 
 # --- Select Streamwise Locations for Profiles ---
 # Example: Select N locations evenly spaced along the wall data, avoiding edges
@@ -114,15 +123,19 @@ num_profiles = 100
 x_wall_to_investigate = np.linspace(0, 1, num_profiles) # Normalized X locations
 indices = np.array([np.argmin(np.abs(x_wall - x)) for x in x_wall_to_investigate])
 
+# Add first and last few points on flat surface
 indices = np.concatenate(([0,1,2,3,4], indices)) # Include first few points
+indices = np.concatenate((indices, [len(x_wall)-5, len(x_wall)-4, len(x_wall)-3, len(x_wall)-2, len(x_wall)-1])) # Include last few points
+
+# indices = [len(x_wall)-50]
 selected_x_wall = x_wall[indices]
 
 print(f"\nSelected streamwise locations (X) for profiles: {selected_x_wall}")
 
 # --- Generate and Interpolate Profiles ---
 velocity_profiles = {} # Dictionary to store results {x_location: (s_distances, u_profile)}
-num_norm_points = 100 # Number of points along each normal line
-max_normal_dist = 0.6 # Max distance to extend normal line (adjust based on channel height, Y1=2)
+num_norm_points = 150 # Number of points along each normal line
+max_normal_dist = 0.35 # Max distance to extend normal line (adjust based on channel height, Y1=2)
 
 print(f"Generating {num_profiles} profiles with {num_norm_points} points up to s={max_normal_dist}...")
 
@@ -145,58 +158,43 @@ for i, idx in enumerate(indices):
     interp_start_time = time.time()
     u_profile = interpolate_data_on_line(mean_u_interpolator, x_norm, y_norm)
     v_profile = interpolate_data_on_line(mean_v_interpolator, x_norm, y_norm)
+    p_profile = interpolate_data_on_line(mean_p_interpolator, x_norm, y_norm)
     interp_end_time = time.time()
     total_interp_time += (interp_end_time - interp_start_time)
     
     # Store the results
-    velocity_profiles[x_loc] = {'s': s_dist, 'u': u_profile, 'v': v_profile, 'x_norm': x_norm, 'y_norm': y_norm, 'x_loc': x_loc, 'y_loc': y_loc}
+    velocity_profiles[x_loc] = {'s': s_dist, 'u': u_profile, 'v': v_profile, 'x_norm': x_norm, 'y_norm': y_norm, 'x_loc': x_loc, 'y_loc': y_loc, 'p': p_profile}
     print(f"  Interpolation done in {interp_end_time - interp_start_time:.3f} s.")
 
 print(f"\nFinished generating profiles. Total interpolation time: {total_interp_time:.2f} s.")
 
 # --- Save Profiles ---
 print(f"Saving calculated profiles to: {output_profiles_filename}")
-try:
-    with open(output_profiles_filename, 'wb') as f:
-        pickle.dump(velocity_profiles, f, protocol=pickle.HIGHEST_PROTOCOL)
-    print("Profiles saved successfully.")
-except Exception as e:
-    print(f"Error saving profiles: {e}")
+with open(output_profiles_filename, 'wb') as f:
+    pickle.dump(velocity_profiles, f, protocol=pickle.HIGHEST_PROTOCOL)
+print("Profiles saved successfully.")
 
 # # --- Plotting Example (Optional) ---
-# # print("\nPlotting first and last calculated profiles...")
-# plt.figure(figsize=(10, 6))
 #
-# # To replicate figure 8 in Balakumar (2015)
-# for i, (x_loc, profile_data) in enumerate(velocity_profiles.items()):
-#     plt.plot( profile_data['u'], profile_data['s'] + profile_data['y_loc'],'o-')
-#     plt.title('x = {:.3f}'.format(x_loc))
-#     plt.xlabel('Mean U Velocity')
-#     plt.ylabel('y')
-#     plt.xlim(-0.25, 1.2)
-#     plt.ylim(0.0, 3.05)
-#     plt.show()
-#
-#
-# profile_keys = list(velocity_profiles.keys())
-# if len(profile_keys) > 0:
-#     # First profile
-#     first_x = profile_keys[0]
-#     profile_data = velocity_profiles[first_x]
-#     plt.plot(profile_data['u'], profile_data['s'], 'o-', label=f'X = {first_x:.3f}', markersize=4)
-#
-#     # Last profile
-#     if len(profile_keys) > 1:
-#        last_x = profile_keys[-1]
-#        profile_data = velocity_profiles[last_x]
-#        plt.plot(profile_data['u'], profile_data['s'], 's-', label=f'X = {last_x:.3f}', markersize=4)
-#
-# plt.xlabel('Mean U Velocity')
-# plt.ylabel('Distance Normal to Wall (s)')
-# plt.title('Wall-Normal Velocity Profiles')
-# plt.legend()
-# plt.grid(True, linestyle=':')
-# plt.show()
-#
+profile_keys = list(velocity_profiles.keys())
+for i in range(len(profile_keys)):
+    # First profile
+    x = profile_keys[i]
+    profile_data = velocity_profiles[x]
+    plt.plot(profile_data['u'], profile_data['s'], 'o-', label=f'X = {x:.3f}', markersize=4)
+
+    # # Last profile
+    # if len(profile_keys) > 1:
+    #    last_x = profile_keys[-1]
+    #    profile_data = velocity_profiles[last_x]
+    #    plt.plot(profile_data['u'], profile_data['s'], 's-', label=f'X = {last_x:.3f}', markersize=4)
+
+plt.xlabel('Mean U Velocity')
+plt.ylabel('Distance Normal to Wall (s)')
+plt.title('Wall-Normal Velocity Profiles')
+plt.legend()
+plt.grid(True, linestyle=':')
+plt.show()
+
 # # You can also plot the normal lines on top of the mean_u contour if desired
 # # (Requires plotting mean_u_2d with x_coords_2d, y_coords_2d first)

@@ -126,6 +126,7 @@ for Re in Re_all:
         inputs_dict = {
             'u1_y_over_nu': pi_1,  # U_i[bot_index] * y_i[bot_index] / nu_i,
             'up_y_over_nu': pi_2,
+            'upn_y_over_nu': pi_2, # pi_2 == 0
             'u2_y_over_nu': pi_3,
             'u3_y_over_nu': pi_4,
             'u4_y_over_nu': pi_5,
@@ -149,6 +150,7 @@ for Re in Re_all:
             'nu': np.full_like(y[bot_index], 1),
             'utau': np.full_like(y[bot_index], retau),
             'up': np.full_like(y[bot_index], 0),
+            'upn': np.full_like(y[bot_index], 0),
             'u2': U2,
             'u3': U3,
             'u4': U4,
@@ -197,19 +199,19 @@ print(f"  Flow Type: {flow_type_df.shape}")
 print(f"  Unnormalized Inputs: {unnormalized_inputs_df.shape}")
 
 # --- Sanity Check ---
-print("\n--- Sanity Check: Comparing HDF5 with Original Pickle ---")
-with open('/home/yuenongling/Codes/BFM/WM_Opt/data/PIPE_data.pkl', 'rb') as f:
-    original_data = pkl.load(f)
-
-# Load corresponding data from HDF5
-inputs_hdf = inputs_df[inputs_df.index.isin(np.arange(len(original_data['inputs'])))].values
-output_hdf = output_df[output_df.index.isin(np.arange(len(original_data['output'])))].values.flatten()
-flow_type_hdf = flow_type_df[flow_type_df.index.isin(np.arange(len(original_data['flow_type'])))].values
-unnormalized_inputs_hdf = unnormalized_inputs_df[
-    unnormalized_inputs_df.index.isin(np.arange(len(original_data['unnormalized_inputs'])))].values
-
-print(f"  Inputs match: {np.allclose(original_data['inputs'], inputs_hdf)}")
-print(f"  Output match: {np.allclose(original_data['output'], output_hdf)}")
-print(f"  Flow type match: {np.array_equal(original_data['flow_type'].astype(str), flow_type_hdf.astype(str))}")
-print(
-    f"  Unnormalized inputs match: {np.allclose(original_data['unnormalized_inputs'].flatten(), unnormalized_inputs_hdf.flatten(), rtol=1e-5, atol=1e-4)}")
+# print("\n--- Sanity Check: Comparing HDF5 with Original Pickle ---")
+# with open('/home/yuenongling/Codes/BFM/WM_Opt/data/PIPE_data.pkl', 'rb') as f:
+#     original_data = pkl.load(f)
+#
+# # Load corresponding data from HDF5
+# inputs_hdf = inputs_df[inputs_df.index.isin(np.arange(len(original_data['inputs'])))].values
+# output_hdf = output_df[output_df.index.isin(np.arange(len(original_data['output'])))].values.flatten()
+# flow_type_hdf = flow_type_df[flow_type_df.index.isin(np.arange(len(original_data['flow_type'])))].values
+# unnormalized_inputs_hdf = unnormalized_inputs_df[
+#     unnormalized_inputs_df.index.isin(np.arange(len(original_data['unnormalized_inputs'])))].values
+#
+# print(f"  Inputs match: {np.allclose(original_data['inputs'], inputs_hdf)}")
+# print(f"  Output match: {np.allclose(original_data['output'], output_hdf)}")
+# print(f"  Flow type match: {np.array_equal(original_data['flow_type'].astype(str), flow_type_hdf.astype(str))}")
+# print(
+#     f"  Unnormalized inputs match: {np.allclose(original_data['unnormalized_inputs'].flatten(), unnormalized_inputs_hdf.flatten(), rtol=1e-5, atol=1e-4)}")

@@ -100,6 +100,15 @@ mean_v_flat = mean_v_2d.flatten()
 print("Calculating wall slopes and normal vectors...")
 wall_slopes, wall_normals = calculate_wall_normals(x_wall, y_wall)
 
+# Sanity check: Plot wall normals
+plt.plot(x_wall, y_wall)
+plt.axis('equal')
+for i in [0,30,200,300,400,500,800,900,1000,1100,1200]:
+    vec_x = np.linspace(0, 1, 10) * wall_normals[i,0]
+    vec_y = np.linspace(0, 1, 10) * wall_normals[i,1]
+    plt.plot(x_wall[i]+vec_x, y_wall[i]+vec_y, 'r-')
+plt.show()
+
 # --- Create Interpolator for Mean U ---
 # Create the interpolator once, as the underlying grid doesn't change
 mean_u_interpolator = create_interpolator(points, mean_u_flat)
@@ -111,7 +120,6 @@ num_profiles = 150
 # indices = np.linspace(5, len(x_wall) - 6, num_profiles, dtype=int) # Avoid very start/end
 indices = np.round(np.linspace(0, len(x_wall) - 1, num_profiles)).astype(int) # Include start/end maybe
 selected_x_wall = x_wall[indices]
-breakpoint()
 
 print(f"\nSelected streamwise locations (X) for profiles: {selected_x_wall}")
 
