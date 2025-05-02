@@ -9,7 +9,7 @@ from scipy import interpolate
 from data_processing_utils import find_k_y_values, import_path
 WM_DATA_PATH = import_path()  # Ensure the BFM_PATH and subdirectories are in the system path
 savedatapath = os.path.join(WM_DATA_PATH, 'data')
-currentpath = os.path.join(WM_DATA_PATH, 'backwardstep_Driver')
+currentpath = os.path.join(WM_DATA_PATH, 'axisym_BL_Driver')
 statspath = os.path.join(currentpath, 'stats')
 
 cp_file = os.path.join(statspath, 'extracted_data_cp.csv')
@@ -17,15 +17,15 @@ cf_file = os.path.join(statspath, 'extracted_data_cf.csv')
 profile_file = os.path.join(statspath, 'extracted_data_profile.csv')
 
 # Define constants from the image
-M_ref = 0.128
-Re_H = 36000
-T_ref = 537  # R
+M_ref = 0.08812
+Re_H = 2_000_000
+T_ref = 527
 H = 1.0  # Step height (normalized to 1.0)
 Uref = 1.0  # Reference velocity (normalized)
 
 # Fractions for defining the boundary layer region of interest
 UP_FRAC = 0.2    # Upper fraction of boundary layer to consider
-DOWN_FRAC = 0.01 # Lower fraction of boundary layer to consider
+DOWN_FRAC = 0.005 # Lower fraction of boundary layer to consider
 
 def process_data(cf_file, cp_file, profile_file, output_path="./"):
     """
@@ -43,7 +43,7 @@ def process_data(cf_file, cp_file, profile_file, output_path="./"):
     nu = 1.0 / Re_H  # Non-dimensional kinematic viscosity
 
     # Calculate the pressure gradient
-    dPdx = np.gradient(cp_data['cp_orig'].values, cp_data['x'].values) * 0.5 * Uref**2
+    dPdx = np.gradient(cp_data['cp'].values, cp_data['x'].values) * 0.5 * Uref**2
     up = np.sign(dPdx) * (nu * abs(dPdx))**(1/3)
     
     all_inputs_data = []
@@ -51,8 +51,9 @@ def process_data(cf_file, cp_file, profile_file, output_path="./"):
     all_flow_type_data = []
     all_unnormalized_inputs_data = []
     
-    # Hardcoded by looking at the data in the profile file
-    delta99 = [1.8, 2.3, 2.4, 3.2, 3.2]
+    # WARNING: Hardcoded by looking at the data in the profile file
+    delta99 = [1.294999942E-02, 1.294999942E-02, 3.316999972E-02, 6.633999944E-02, 2.565000020E-02, 3.581000119E-02, 
+               4.089000076E-02, 4.089000076E-02, 4.597000033E-02, 4.597000033E-02, 5.612999946E-02, 5.612999946E-02, 6.120999902E-02]
 
     for i, station in enumerate(stations):
         print(f"Processing station {station}")
@@ -72,8 +73,6 @@ def process_data(cf_file, cp_file, profile_file, output_path="./"):
         
         # Extract y and U data
         y_i = station_data['y'].values
-        if x < 0: # if the x position is negative, it is before the step 
-            y_i -= 1
 
         U_i = station_data['u'].values
         
@@ -93,6 +92,7 @@ def process_data(cf_file, cp_file, profile_file, output_path="./"):
         
         # Find points within the boundary layer region of interest
         bot_index = np.where((y_i >= DOWN_FRAC*delta99_i) & (y_i <= UP_FRAC*delta99_i))[0]
+        print(f"  Found {len(bot_index)} points in boundary layer region")
 
         if len(bot_index) < 2:
             print(f"  Skipping station {station}: not enough points in boundary layer")
@@ -127,7 +127,7 @@ def process_data(cf_file, cp_file, profile_file, output_path="./"):
         pi_out = pi_out[bot_index]
         # Flow type information
         flow_type_tmp = np.array([
-            ['backstep', nu, x, delta99_i, albert_i] for _ in range(len(bot_index))
+            ['axisym_BL', nu, x, delta99_i, albert_i] for _ in range(len(bot_index))
         ], dtype=object)
         
         # --- Calculate Input Features (Pi Groups) ---
@@ -173,9 +173,9 @@ def process_data(cf_file, cp_file, profile_file, output_path="./"):
         # Using format: [case_name, reference_nu, x_coord, delta, edge_velocity]
         # For channel flow: x=0, delta=1 (half-channel height), Ue=0 (or U_bulk if needed)
         len_y = len(y_i[bot_index])
-        'backstep', nu, x, delta99_i, albert_i
+        'axissym_BL', nu, x, delta99_i, albert_i
         flow_type_dict = {
-            'case_name': ['backstep'] * len_y,
+            'case_name': ['axissym_BL'] * len_y,
             'nu': [nu] * len_y,
             'x': [x] * len_y,
             'delta': [delta99_i] * len_y,
@@ -193,7 +193,7 @@ def process_data(cf_file, cp_file, profile_file, output_path="./"):
     unnormalized_inputs_df = pd.concat(all_unnormalized_inputs_data, ignore_index=True)
 
 # Save DataFrames to HDF5 file
-    output_filename = os.path.join(savedatapath, 'backstep_data.h5')
+    output_filename = os.path.join(savedatapath, 'axisym_BL_data.h5')
     print(f"\nSaving data to HDF5 file: {output_filename}")
         # Use fixed format for better performance with numerical data
     inputs_df.to_hdf(output_filename, key='inputs', mode='w', format='fixed')

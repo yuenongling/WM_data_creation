@@ -4,8 +4,20 @@ import pandas as pd
 
 from data_processing_utils import find_k_y_values, import_path
 WM_DATA_PATH = import_path()  # Ensure the BFM_PATH and subdirectories are in the system path
-import utils  # Assumes 'utils' module is accessible from '../NNOpt/'
-import common # Assumes 'common' module is accessible from '../NNOpt/post_proc/'
+import common
+
+Retau_v = [180,    550,   950,  2000,   4200,  5200, 10000] # list of Re_tau
+inu_v   = [3250, 11180, 20580, 48500, 112500, 125000, 290000] # inverse of nu
+utau_v  = [0.057231059, 0.048904658, 0.045390026, 0.04130203, 0.0371456, 4.14872e-02, 0.034637]
+
+Re_dict = {}
+for i, Re in enumerate(Retau_v):
+    Re_dict[Re] = {
+        'inu': inu_v[i],
+        'utau': utau_v[i]
+    }
+
+
 
 # --- Main Data Creation Function ---
 def create_channel_flow_data_hdf5(RE_NUMS, output_dir=os.path.join(WM_DATA_PATH, "data"), Verbose=False):
@@ -38,12 +50,12 @@ def create_channel_flow_data_hdf5(RE_NUMS, output_dir=os.path.join(WM_DATA_PATH,
             print(f"\nProcessing Re_tau = {Re_num}...")
 
         # Load raw data using provided utility functions
-        try:
-            nu, [tauw, _], _ = utils.get_data(Re=Re_num) # Assuming utils.get_data provides nu and tauw
-            y, Udns = common.read_ch_prof(Re_num) # Assuming common.read_ch_prof provides y and U (in wall units)
-        except Exception as e:
-            print(f"Error loading data for Re_tau={Re_num}: {e}")
-            continue
+        # nu, [tauw, _], _ = utils.get_data(Re=Re_num) # Assuming utils.get_data provides nu and tauw
+        utau = Re_dict[Re_num]['utau']
+        nu   = 1/Re_dict[Re_num]['inu'] # Inverse of nu
+
+        y, Udns = common.read_ch_prof(Re_num) # Assuming common.read_ch_prof provides y and U (in wall units)
+
 
         # Remove the first element if it's zero (common issue in profile data)
         if Udns[0] == 0 or y[0] == 0:
@@ -51,7 +63,6 @@ def create_channel_flow_data_hdf5(RE_NUMS, output_dir=os.path.join(WM_DATA_PATH,
             Udns = Udns[1:]
 
         # Calculate friction velocity and scale velocity to physical units
-        utau = np.sqrt(abs(tauw)).squeeze()
         Udns_phys = Udns * utau # Convert from wall units to physical velocity
 
         # Calculate dimensionless wall distance and filter data based on physical y range
@@ -177,7 +188,7 @@ def create_channel_flow_data_hdf5(RE_NUMS, output_dir=os.path.join(WM_DATA_PATH,
 
 # --- Execution Example ---
 if __name__ == "__main__":
-    RE_NUMS_CHANNEL = [550, 950, 2000, 4200] # Example Reynolds numbers (Retau)
+    RE_NUMS_CHANNEL = [550, 950, 2000, 4200, 5200, 10000]
     saved_file_path = create_channel_flow_data_hdf5(RE_NUMS_CHANNEL, Verbose=True)
 
     if saved_file_path:

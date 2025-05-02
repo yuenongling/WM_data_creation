@@ -1,7 +1,7 @@
 '''
-For this specific script, need to run from the TBL directory
+For this specific script, need to run from the WM_data_creation directory
 
-python create_TBL_data.py
+python TBL/create_TBL_data.py
 
 '''
 import os

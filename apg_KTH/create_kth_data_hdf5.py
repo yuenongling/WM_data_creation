@@ -41,6 +41,7 @@ for subcase in subcases:
     beta = result['beta']
     P    = result['P']
 
+    breakpoint()
     # Albert parameter: alber = theta / Ue**2 * dPdx
     albert = theta / Ue**2 * dPdx
     xa = result['x']
