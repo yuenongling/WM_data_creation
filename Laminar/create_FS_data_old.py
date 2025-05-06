@@ -15,13 +15,19 @@ parent_dir = WM_DATA_PATH
 
 # --- Physical and Simulation Constants ---
 Vinf = 7.0
-nu = 1.45e-6
+U_inf = 1
+# nu = 1.45e-6
 c = 0.08
 rho = 1.225
 UP_FRAC = 0.25
-DOWN_FRAC = 0.005
-a_values = [2.0, 1.0, 0.6, 0.3, 0.1, 0.0, -0.05, -0.08, -0.09043]
-reynolds_numbers = np.logspace(3, 6, 5)
+DOWN_FRAC = 0.01
+a_values = [2.0, 1.0, 0.6, 0.3, 0.1, 0.0, -0.05, -0.08, -0.09043,
+            # Milder APG cases
+            -0.0001, -0.001, -0.0025, -0.005, -0.01, -0.025, 
+            # Milder FPG cases
+            0.0001, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.075
+            ]
+reynolds_numbers = np.logspace(2, 5, 5)
 x_over_c_locations = np.linspace(0.1, 1.0, 20)
 YPLUS_THRESHOLD = 5.0 # Minimum y+ to include
 
@@ -38,7 +44,8 @@ def calculate_falkner_skan_profile(a_value, Re, x_over_c_val):
     except Exception as e:
         return None
     x_val = x_over_c_val * c
-    U_inf = Re * nu / c
+    # U_inf = Re * nu / c
+    nu = U_inf * c / Re
     if abs(a_value) < 1e-9: ue_val = U_inf
     elif x_val == 0: ue_val = 0
     else: ue_val = U_inf * (x_val / c) ** a_value
@@ -96,10 +103,7 @@ def process_and_save_profiles(profiles_list, region_name, output_data_dir):
         idx_low_bl, idx_up_bl = idx_low_bl_arr[0], idx_up_bl_arr[-1]
         if idx_up_bl <= idx_low_bl: continue
 
-        yplus_check = y_vals[idx_low_bl:idx_up_bl+1] * u_tau / profile_nu
-        valid_yplus_indices = np.where(yplus_check > YPLUS_THRESHOLD)[0]
-        if len(valid_yplus_indices) == 0: continue
-        final_indices = (idx_low_bl + valid_yplus_indices[0], idx_low_bl + valid_yplus_indices[-1])
+        final_indices = (idx_low_bl, idx_up_bl)
         if final_indices[1] <= final_indices[0]: continue
 
         y_sel = y_vals[final_indices[0]:final_indices[1]+1]

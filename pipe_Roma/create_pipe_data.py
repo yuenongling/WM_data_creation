@@ -91,7 +91,10 @@ for Re in Re_all:
 
         # No equivalent to 'x' or 'dPdx' in channel flow, so using 0 as placeholder
         x = 0
-        dPdx = 0
+        # up = utau * (1/retau) **1/3
+        # up*y/nu = yplus * (1/retau) ** 1/3
+        dPdx = - (retau) #  This is placeholder for dPdx  
+        up = - (1/retau)**(1/3)
 
         # Calculate interpolated U values
         U2 = find_k_y_values(y[bot_index], uu, y, k=1)
@@ -107,7 +110,7 @@ for Re in Re_all:
         # NOTE: Inputs (mimicking KTH script input features)
         pi_1 = uu * y # U * y / nu
         pi_1 = pi_1[bot_index]
-        pi_2 = dPdx * y
+        pi_2 = y_plus * up
         pi_2 = pi_2[bot_index]
         pi_3 = U2 * y[bot_index]
         pi_4 = U3 * y[bot_index]
@@ -121,7 +124,6 @@ for Re in Re_all:
         pi_out = pi_out[bot_index]
 
         # --- Calculate Input Features (Pi Groups) ---
-        # Note:  dPdx is NOT zero here
         # Calculate dimensionless inputs using safe names
         inputs_dict = {
             'u1_y_over_nu': pi_1,  # U_i[bot_index] * y_i[bot_index] / nu_i,
@@ -149,8 +151,8 @@ for Re in Re_all:
             'u1': uu[bot_index],
             'nu': np.full_like(y[bot_index], 1),
             'utau': np.full_like(y[bot_index], retau),
-            'up': np.full_like(y[bot_index], 0),
-            'upn': np.full_like(y[bot_index], 0),
+            'up': np.full_like(y[bot_index], up),
+            'upn': np.full_like(y[bot_index], up),
             'u2': U2,
             'u3': U3,
             'u4': U4,

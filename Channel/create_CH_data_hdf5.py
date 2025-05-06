@@ -85,7 +85,8 @@ def create_channel_flow_data_hdf5(RE_NUMS, output_dir=os.path.join(WM_DATA_PATH,
 
         # --- Calculate Input Features (Pi Groups) ---
         # Note: Channel flow has dPdx = 0
-        dPdx = 0
+        dPdx = - utau** 2  # Pressure gradient (dP/dx) is zero for channel flow, but we use this for consistency
+        up = np.sign(dPdx) * (np.abs(dPdx)*nu)**(1/3)  # Up is zero for channel flow, but we keep the form
 
         # Interpolate velocities at required k*y locations
         U2 = find_k_y_values(y_sel, Udns_phys, y, k=1)
@@ -101,7 +102,7 @@ def create_channel_flow_data_hdf5(RE_NUMS, output_dir=os.path.join(WM_DATA_PATH,
         # Calculate dimensionless inputs using safe names
         inputs_dict = {
             'u1_y_over_nu': U_sel * y_sel / nu_sel,          # pi_1
-            'up_y_over_nu': np.full_like(y_sel, dPdx),     # pi_2 (is zero for CH)
+            'up_y_over_nu': up * y_sel / nu_sel,     # pi_2 (is zero for CH)
             'upn_y_over_nu': np.full_like(y_sel, dPdx),     # pi_2 (is zero for CH)
             'u2_y_over_nu': U2 * y_sel / nu_sel,             # pi_3
             'u3_y_over_nu': U3 * y_sel / nu_sel,             # pi_4
@@ -125,7 +126,7 @@ def create_channel_flow_data_hdf5(RE_NUMS, output_dir=os.path.join(WM_DATA_PATH,
             'u1': U_sel,
             'nu': nu_sel,
             'utau': np.full_like(y_sel, utau),
-            'up': np.full_like(y_sel, dPdx), # dPdx is 0 for channel flow
+            'up': np.full_like(y_sel, up), # dPdx is 0 for channel flow
             'upn': np.full_like(y_sel, dPdx), # dPdx is 0 for channel flow
             'u2': U2,
             'u3': U3,
