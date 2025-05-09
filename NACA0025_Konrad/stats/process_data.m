@@ -26,8 +26,8 @@ c = 1;
 Re = 1600000;
 mu = (U_inf * c * rho_inf) / Re;
 
-Savetype = "Turbulent";
-Plot_check = false;
+Savetype = "Laminar";
+Plot_check = true;
 sprintf("Save type is %s", Savetype)
   
 % Constants
