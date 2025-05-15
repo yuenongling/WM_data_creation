@@ -1,0 +1,26 @@
+#  File: M_TAUW.DAT
+# 
+#  Cases: AG1/1000, AG2/1000, AG2/600
+# 
+#  -----------------------------------------------------------------------
+#     Wall shear stress at cross section M (x=675mm), 
+#     measured with the balance.
+#  -----------------------------------------------------------------------
+# 
+#        1.11 :Fluid density [kg/m**3]
+#    1.65E-05 :Kinematic viscosity [m**2/s]
+# 
+#  A: xA [mm]
+#  B: Wall shear stress [Pa], case AG1/1000
+#  C: Wall shear stress [Pa], case AG2/1000
+#  D: Wall shear stress [Pa], case AG2/600
+# 
+#    A       B       C       D
+# 
+#  **********************************
+ -100.   3.282  
+    0.   2.213  
+   50.   0.664  
+  100.   0.235  
+  200.   0.421  
+  300.   0.627  
