@@ -1,0 +1,22 @@
+#
+#Skin-Friction Measurements with Laser Oil-Flow Interferometer
+# CASE B'.S1/2 (off design conditions)*
+#         for qualitative use only
+#
+# These case B' measurements should only be used qualitatively
+#
+#* Note: Some of the wall shear stress for case B was
+#obtained while the tunnel was running in an off design
+#condition (i.e., the boundary layer was 50% thicker due
+#to  dirty inlet screens) and is denoted as case B'.
+#This data should be used qualitatively only, and
+#"should not" be used in conjunction with the Cp data or
+#the LDV data which was obtained using design conditions. 
+# ---------------------------------
+#  X(mm)  X(in)    Cfx         Cfz
+  12.7	0.5	0.00115	     0.0006	 
+  25.4	1.0	0.0010       0.00043
+  50.8	2.0	0.0009       0.00033
+  76.2	3.0	0.00086      0.00027
+ 152.4	6.0	0.00068      0.00013
+ 304.8	12.0	0.00060      0.00008

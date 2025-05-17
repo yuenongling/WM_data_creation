@@ -1,0 +1,24 @@
+##
+##Surface Skin-Friction Direction from Oil-Flow Visualization
+##      CASE B'.S2   (*) for qualitative use only
+##
+##* Note: Some of the surface oil flow direction data obtained
+##for case B was obtained while the tunnel was running in an off
+##design condition (i.e., the boundary layer was 50% thicker
+##due to  dirty inlet screens) and is denoted as case B'.
+##This data should be used qualitatively only, and
+##"should not" be used in conjunction with the Cp data or
+##the LDV data which was obtained using design conditions. 
+## ---------------------
+## X(mm)  X(in)   B(deg)
+   8.9	 0.35	66
+  31.8	 1.25	50
+  55.9	 2.2	43
+   6.3	 0.25	67
+  40.6	 1.6	48
+ 245.1	 9.65	25
+ 342.9	13.5	19.5
+  14.0	 0.55	65
+  57.1	 2.25	49
+ 132.1	 5.2	37.50
+ 226.1	 8.9	21.50
