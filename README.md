@@ -1,5 +1,7 @@
 # WM_data_creation
 
+This directory contains scripts for generating various wall-modeled data sets for training machine learning models. The data sets cover different flow configurations, including turbulent boundary layers, channel flow, pipe flow, and synthetic data. Generated data can be found in [here](https://github.com/yuenongling/BFM_WM/tree/master/data)
+
 ## Data Processing Utilities
 
 * `data_processing_utils.py`:  Provides utility functions for data processing, such as importing paths and interpolating velocity profiles[cite: 2].
