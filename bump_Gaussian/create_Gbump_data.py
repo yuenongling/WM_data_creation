@@ -16,10 +16,10 @@ STATS_PATH = os.path.join(WM_DATA_PATH, "bump_Gaussian", "stats")
 OUTPUT_PATH = os.path.join(WM_DATA_PATH, "data")
 REYNOLDS_NUMBER = int(sys.argv[1])*1_000_000 if len(sys.argv) > 1 else 2_000_000
 RE_STRING = f'{REYNOLDS_NUMBER//1_000_000}M'
-UPPER_FRACTION = 0.20
-LOWER_FRACTION = 0.025
+UPPER_FRACTION = 0.25
+LOWER_FRACTION = 0.001
 UPPER_FRACTION_SEP = 0.05
-LOWER_FRACTION_SEP = 0.003
+LOWER_FRACTION_SEP = 0.001
 
 # --- Select whether to save data and which points to inspect ---
 import sys
@@ -569,6 +569,21 @@ if save_data:
             save_plots=True,
         )
 
+        # All regions combined
+        process_and_save_region_data(
+            p,
+            u_mag,
+            cf_interpolated,
+            x_normal,
+            y_normal,
+            delta,
+            up,
+            "ALL",
+            0,
+            ind_sep,
+            save_plots=True,
+        )
+
         # Additional concave and convex regions (as in the original code)
         # x_concave_low = -0.138
         # ind_concave_low = np.where(x_normal[:, 0] <= x_concave_low)[0][-1]
@@ -740,6 +755,21 @@ if save_data:
             up,
             ind_sep,
             ind_reatt,
+            save_plots=True,
+        )
+
+        # All regions combined
+        process_and_save_region_data(
+            p,
+            u_mag,
+            cf_interpolated,
+            x_normal,
+            y_normal,
+            delta,
+            up,
+            "ALL",
+            0,
+            ind_sep,
             save_plots=True,
         )
 

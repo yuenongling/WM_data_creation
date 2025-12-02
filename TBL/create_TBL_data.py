@@ -19,9 +19,9 @@ from data_processing_utils import find_k_y_values, import_path
 WM_DATA_PATH = import_path(load_bfm_path=False)  # Ensure the BFM_PATH and subdirectories are in the system path
 savedatapath = os.path.join(WM_DATA_PATH, 'data')
 UP_FRAC = 0.20
-DOWN_FRAC = 0.01
+DOWN_FRAC = 0.0005
 UP_FRAC_SEP = 0.05
-DOWN_FRAC_SEP = 0.005
+DOWN_FRAC_SEP = 0.0005
 
 TBL_PATH = "/home/yuenongling/Codes/BL/TBLS"
 fpath_format = TBL_PATH + "/data/postnpz_20250321/TBL_Retheta_670_theta_{angle}deg_medium_avg_slice.npz"
@@ -86,6 +86,8 @@ for i, angle in enumerate(angle_list):
         else:
             idy_low = np.where(y >= DOWN_FRAC*delta[idx])[0][0]
             idy_high = np.where(y <= UP_FRAC*delta[idx])[0][-1]
+
+        print(idy_high-idy_low)
 
         utau = utau_x[idx]
 

@@ -1,0 +1,16 @@
+# Driver and Seegmiller backstep auxiliary data.
+# Contents (tables 1-3 for alpha=0 and 6 deg.):
+
+# Table 1.  REATTACHMENT LENGTH for REARWARD FACING STEP FLOW with 9:1 Expansion Ratio, H=12.7mm
+#           Determined by laser oil-flow interferometer measurements of skin-friction
+#             and interpolation of the zero skin-friction location
+#
+# Roof Angle   Reattachment Length
+# (degrees)      Xr/H              dXr/H
+    -2.0        5.82             +- 0.08
+     0.0        6.26             +- 0.10
+     2.0        6.72             +- 0.10
+     4.0        7.44             +- 0.25
+     6.0        8.30             +- 0.15
+     8.0        9.22             +- 0.24
+    10.0       10.18             +- 0.50

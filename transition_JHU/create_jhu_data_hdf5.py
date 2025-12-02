@@ -4,77 +4,41 @@ import pandas as pd
 import os
 import pickle as pkl  # Import pickle
 
-# --- Set up paths and constants ---
-from data_processing_utils import find_k_y_values, import_path
-WM_DATA_PATH = import_path()  # Ensure the BFM_PATH and subdirectories are in the system path
-datapath = os.path.join(WM_DATA_PATH, 'data')
-APG_MAT_FILE = os.path.join(WM_DATA_PATH, 'apg_KTH', 'data', 'APG.mat')
+def save_to_hdf5(idx_all, xall, y, U, P, nu, utau, dPdx, up, delta99, reg_name='laminar'):
 
-# --- Load the APG data ---
-results = loadmat(APG_MAT_FILE, squeeze_me=True)
-subcases = ['b1n', 'b2n', 'm13n', 'm16n', 'm18n']
-UP_FRAC = 0.25
-DOWN_FRAC = 0.005
-
-for subcase in subcases:
-# Lists to collect data
     all_inputs_data = []
     all_output_data = []
     all_flow_type_data = []
     all_unnormalized_inputs_data = []
 
-    result = results[subcase]
+# Albert parameter: alber = theta / Ue**2 * dPdx
+    for idx in idx_all:
+        x = xall[idx]
 
-    # Read data
-    Cf = result['Cf']  # Cf = 2(utau / Ue)^2
-
-    U = result['U']
-    y = result['y']
-    Ue = result['Ue']
-    utau = np.array([np.sqrt(Cf[i] / 2) * Ue[i] for i, _ in enumerate(Cf)])
-    dPdx = result['beta'] * utau**2 / result['deltas']  # NOTE: get back dPdx from beta
-    theta = result['theta']
-    nu = result['nu']
-    up = np.sign(dPdx) * (abs(nu * dPdx)) ** (1 / 3)
-    delta99 = result['delta99']
-    beta = result['beta']
-    P    = result['P']
-
-    # Albert parameter: alber = theta / Ue**2 * dPdx
-    albert = theta / Ue**2 * dPdx
-    xa = result['x']
-
-    for idx, x in enumerate(xa):
-
-        # NOTE: Discard points after 2000
-        if x > 2000:
+        # Downsample the data
+        if idx % 10 != 0:
             continue
+
         # if albert[i] > 0.1:
         #     break
-        y_i = y[idx]
-        U_i = U[idx]
-        P_i = P[idx]
+        y_i = y
+        U_i = U[:, idx]
+        P_i = P[:, idx]
 
         delta99_i = delta99[idx]
-        nu_i = nu[idx]
-        x_i = xa[idx]
+        nu_i = nu
+        x_i = xall[idx]
         utau_i = utau[idx]
-        beta_i = beta[idx]
         dPdx_i = dPdx[idx]
-
-        # Skip the first point if it is zero
-        if U_i[0] == 0 or y_i[0] == 0:
-            y_i = y_i[1:]
-            U_i = U_i[1:]
-
-        y_i = np.array(y_i)
-        U_i = np.array(U_i)
         up_i = up[idx]
 
         delta_p = P_i - P_i[0]  # Pressure difference from the first point
         up_n_i = np.sign(delta_p) * (abs(nu_i * delta_p)) ** (1 / 3)
 
-        bot_index = np.where((y_i >= DOWN_FRAC * delta99_i) & (y_i <= UP_FRAC * delta99_i))[0]
+        if reg_name == 'laminar':
+            bot_index = np.where((y_i >= 0.05 * delta99_i) & (y_i <= UP_FRAC * delta99_i))[0]
+        else:
+            bot_index = np.where((y_i >= DOWN_FRAC * delta99_i) & (y_i <= UP_FRAC * delta99_i))[0]
 
         U2 = find_k_y_values(y_i[bot_index], U_i, y_i, k=1)
         U3 = find_k_y_values(y_i[bot_index], U_i, y_i, k=2)
@@ -126,39 +90,83 @@ for subcase in subcases:
         # Using format: [case_name, reference_nu, x_coord, delta, edge_velocity]
         # For channel flow: x=0, delta=1 (half-channel height), Ue=0 (or U_bulk if needed)
         flow_type_dict = {
-            'case_name': ['apg_kth'] * len(y_i[bot_index]),
+            'case_name': [f'transition_JHU_{reg_name}'] * len(y_i[bot_index]),
             'nu': [nu_i] * len(y_i[bot_index]),
             'x': [x_i] * len(y_i[bot_index]),
             'delta': [delta99_i] * len(y_i[bot_index]),
-            'albert': [albert[idx]] * len(y_i[bot_index])
+            'albert': [0] * len(y_i[bot_index])
         }
         # Add Retau for reference if needed, maybe as an extra column or replacing 'edge_velocity'
         # flow_type_dict['Retau'] = [Re_num] * len(y_sel)
         all_flow_type_data.append(pd.DataFrame(flow_type_dict))
 
-    # Concatenate data from all Re_num cases into single DataFrames
+# Concatenate data from all Re_num cases into single DataFrames
     inputs_df = pd.concat(all_inputs_data, ignore_index=True)
     output_df = pd.concat(all_output_data, ignore_index=True)
     flow_type_df = pd.concat(all_flow_type_data, ignore_index=True)
     unnormalized_inputs_df = pd.concat(all_unnormalized_inputs_data, ignore_index=True)
 
-    # Save DataFrames to HDF5 file
-    output_filename = os.path.join(datapath, 'apg_' + subcase + '_data.h5')
+# Save DataFrames to HDF5 file
+    output_filename = os.path.join(datapath, f'transition_JHU_{reg_name}_data.h5')
     print(f"\nSaving data to HDF5 file: {output_filename}")
         # Use fixed format for better performance with numerical data
     inputs_df.to_hdf(output_filename, key='inputs', mode='w', format='fixed')
     output_df.to_hdf(output_filename, key='output', mode='a', format='fixed')
     unnormalized_inputs_df.to_hdf(output_filename, key='unnormalized_inputs', mode='a', format='fixed')
-    # Use table format for flow_type if it contains strings, to keep them
+# Use table format for flow_type if it contains strings, to keep them
     flow_type_df.to_hdf(output_filename, key='flow_type', mode='a', format='table')
     print("Data successfully saved.")
 
-    # Print summary shapes
+# Print summary shapes
     print(f"Final Shapes:")
     print(f"  Inputs: {inputs_df.shape}")
     print(f"  Output: {output_df.shape}")
     print(f"  Flow Type: {flow_type_df.shape}")
     print(f"  Unnormalized Inputs: {unnormalized_inputs_df.shape}")
+
+# --- Set up paths and constants ---
+from data_processing_utils import find_k_y_values, import_path
+WM_DATA_PATH = import_path()  # Ensure the BFM_PATH and subdirectories are in the system path
+datapath = os.path.join(WM_DATA_PATH, 'data')
+DATA_FILE = os.path.join(WM_DATA_PATH, 'transition_JHU', 'stats', 'stats.pkl')
+
+# --- Load the APG data ---
+with open(DATA_FILE, 'rb') as f:
+    result = pkl.load(f)
+
+UP_FRAC = 0.2
+DOWN_FRAC = 0.01
+
+
+
+# Read data
+tauw = result['tauw']  # Wall shear stress
+utau = np.sqrt(tauw)  # Wall shear velocity
+
+U = result['um']
+y = result['y']
+x = result['x']
+xall = result['x']
+nu = 1.25e-3
+P    = result['p']
+delta99 = result['delta99']
+
+dPdx = np.gradient(P[0, :], xall)  # Gradient of pressure with respect to x
+# Smooth the pressure gradient
+dPdx = np.convolve(dPdx, np.ones(20)/20, mode='same')
+up = np.sign(dPdx) * (abs(nu * dPdx)) ** (1 / 3)
+
+# Depending on xall, we save to different regions
+x_laminar = xall[(xall > 100) & (xall < 200)]
+x_laminar_idx = np.where((xall > 100) & (xall < 200))[0]
+x_transition_idx = np.where((xall > 200) & (xall < 460))[0]
+x_turbulent_idx = np.where((xall > 460) & (xall < 800))[0]
+
+save_to_hdf5(x_laminar_idx   , x, y, U, P, nu, utau, dPdx, up, delta99, reg_name='laminar')
+save_to_hdf5(x_transition_idx, x, y, U, P, nu, utau, dPdx, up, delta99, reg_name='transition')
+save_to_hdf5(x_turbulent_idx , x, y, U, P, nu, utau, dPdx, up, delta99, reg_name='turbulent')
+
+
 
     # NOTE: This is outdated code for sanity check, uncomment if needed
     # Only to check with original pickle data
