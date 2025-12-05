@@ -35,7 +35,7 @@ def smooth_curve(xcp, cp, num_points=100):
 
 # Define constants similar to the second file
 UP_FRAC = 0.25
-DOWN_FRAC = 0.01
+DOWN_FRAC = 0.000
 
 # --- Set up paths and constants ---
 import os

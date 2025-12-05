@@ -8,8 +8,8 @@ from data_processing_utils import find_k_y_values, import_path
 WM_DATA_PATH = import_path()  # Ensure the BFM_PATH and subdirectories are in the system path
 datapath = os.path.join(WM_DATA_PATH, 'data')
 statspath = os.path.join(WM_DATA_PATH, 'diffuser_Ohlsson', 'stats')
-UP_FRAC = 0.2
-DOWN_FRAC = 0.01
+UP_FRAC = 0.25
+DOWN_FRAC = 0.000
 Re = 10000 # Bulk Reynolds number
 nu = 1.0 / Re  # Kinematic viscosity
 

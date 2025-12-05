@@ -101,10 +101,10 @@ for case_name in ['A', 'B', 'C']:
 # --- Analysis and Processing ---
 
 # Define y-range parameters (relative to delta)
-    UP_DELTA = 0.2
-    DOWN_DELTA = 0.008
-    UP_DELTA_SEP = 0.05 # Use different limits in separation
-    DOWN_DELTA_SEP = 0.005
+    UP_DELTA = 0.25
+    DOWN_DELTA = 0.000
+    UP_DELTA_SEP = 0.25 # Use different limits in separation
+    DOWN_DELTA_SEP = 0.000
 
 # Find separation region indices using the loaded Cf
     idx_first_sep, idx_last_sep = find_separation_region(Cf)

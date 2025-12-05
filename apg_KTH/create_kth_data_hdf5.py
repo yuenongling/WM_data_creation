@@ -14,7 +14,7 @@ APG_MAT_FILE = os.path.join(WM_DATA_PATH, 'apg_KTH', 'data', 'APG.mat')
 results = loadmat(APG_MAT_FILE, squeeze_me=True)
 subcases = ['b1n', 'b2n', 'm13n', 'm16n', 'm18n']
 UP_FRAC = 0.25
-DOWN_FRAC = 0.005
+DOWN_FRAC = 0.000
 
 for subcase in subcases:
 # Lists to collect data

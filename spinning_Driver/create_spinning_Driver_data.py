@@ -98,8 +98,8 @@ Uref = 30
 nu = (Uref * 18e-3) / 6000 # Re = Uref * L / nu
 
 rho = 1
-UP_FRAC = 0.20
-DOWN_FRAC = 0.025
+UP_FRAC = 0.25
+DOWN_FRAC = 0.00
 
 cases = ['as1', 'cs0', 'cs1', 'ds0', 'ds1']
 

@@ -35,8 +35,8 @@ def create_channel_flow_data_hdf5(RE_NUMS, output_dir=os.path.join(WM_DATA_PATH,
         str: Path to the saved HDF5 file.
     """
     # Constants for data selection
-    y_lower_limit = 0.001 # Lower boundary layer limit (in physical units)
-    y_up_limit = 0.2    # Upper boundary layer limit (in physical units)
+    y_lower_limit = 0.000 # Lower boundary layer limit (in physical units)
+    y_up_limit = 0.25    # Upper boundary layer limit (in physical units)
 
     # Lists to collect data from all Re_num cases
     all_inputs_data = []
@@ -87,6 +87,7 @@ def create_channel_flow_data_hdf5(RE_NUMS, output_dir=os.path.join(WM_DATA_PATH,
         # Note: Channel flow has dPdx = 0
         dPdx = - utau** 2  # Pressure gradient (dP/dx) is zero for channel flow, but we use this for consistency
         up = np.sign(dPdx) * (np.abs(dPdx)*nu)**(1/3)  # Up is zero for channel flow, but we keep the form
+        up = 0 # WARNING: Enfore up = 0 for channel flow
 
         # Interpolate velocities at required k*y locations
         U2 = find_k_y_values(y_sel, Udns_phys, y, k=1)

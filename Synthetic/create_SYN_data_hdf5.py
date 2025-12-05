@@ -24,8 +24,8 @@ def create_synthetic_data_hdf5(RE_NUMS, output_dir=os.path.join(WM_DATA_PATH, "d
     # Constants for log-law and data selection
     kappa = 0.41
     B = 5.2
-    y_lower_limit = 0.001 # Lower boundary layer limit (physical units) - adjust if needed
-    y_up_limit = 0.15    # Upper boundary layer limit (physical units) - adjust if needed
+    y_lower_limit = 0.000 # Lower boundary layer limit (physical units) - adjust if needed
+    y_up_limit = 0.25    # Upper boundary layer limit (physical units) - adjust if needed
     yplus_min_limit = 50 # Minimum y+ to consider (log-law region assumption)
 
     # Lists to collect data from all Re_num cases

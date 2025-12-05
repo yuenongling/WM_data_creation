@@ -12,7 +12,7 @@ currentpath = os.path.join(WM_DATA_PATH, 'pipe_Roma', 'stats')
 
 # --- Load the APG data ---
 UP_FRAC = 0.2
-DOWN_FRAC = 0.025
+DOWN_FRAC = 0.000
 
 def read_pipe_data(filepath):
     """
@@ -95,6 +95,7 @@ for Re in Re_all:
         # up*y/nu = yplus * (1/retau) ** 1/3
         dPdx = - (retau) #  This is placeholder for dPdx  
         up = - (1/retau)**(1/3)
+        up = 0 # Enforce up = 0 for pipe flow
 
         # Calculate interpolated U values
         U2 = find_k_y_values(y[bot_index], uu, y, k=1)

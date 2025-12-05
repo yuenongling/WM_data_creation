@@ -17,10 +17,10 @@ STATS_PATH = os.path.join(WM_DATA_PATH, "airfoil_Tamaki", f"{REYNOLDS_NUMBER//1_
 WALL_GEO_PATH = os.path.join(WM_DATA_PATH, "airfoil_Tamaki", "airfoil.txt")
 OUTPUT_PATH = os.path.join(WM_DATA_PATH, "data")
 
-UPPER_FRACTION = 0.2
-LOWER_FRACTION = 0.01
-UPPER_FRACTION_SEP = 0.1
-LOWER_FRACTION_SEP = 0.003
+UPPER_FRACTION = 0.25
+LOWER_FRACTION = 0.000
+UPPER_FRACTION_SEP = 0.25
+LOWER_FRACTION_SEP = 0.000
 
 # --- Select whether to save data and which points to inspect ---
 inspect_x = []

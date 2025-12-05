@@ -12,7 +12,7 @@ currentpath = os.path.join(WM_DATA_PATH, 'duct_Roma', 'stats')
 
 # --- Load the APG data ---
 UP_FRAC = 0.25
-DOWN_FRAC = 0.002
+DOWN_FRAC = 0.000
 
 Re_all = [150, 220, 500, 1000]
 Re_all_real = [150, 227, 519, 1055]

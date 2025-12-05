@@ -15,8 +15,8 @@ statspath = os.path.join(currentpath, 'stats')
 
 # --- Hardcoded some data ---
 rho = 1.194
-UP_FRAC = 0.20
-DOWN_FRAC = 0.025
+UP_FRAC = 0.25
+DOWN_FRAC = 0.000
 
 cases = ['t3am', 't3a', 't3b' , 't3c1', 't3c2', 't3c3', 't3c4', 't3c5']
 

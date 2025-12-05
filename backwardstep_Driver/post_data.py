@@ -24,8 +24,8 @@ H = 1.0  # Step height (normalized to 1.0)
 Uref = 1.0  # Reference velocity (normalized)
 
 # Fractions for defining the boundary layer region of interest
-UP_FRAC = 0.2    # Upper fraction of boundary layer to consider
-DOWN_FRAC = 0.01 # Lower fraction of boundary layer to consider
+UP_FRAC = 0.25    # Upper fraction of boundary layer to consider
+DOWN_FRAC = 0.000 # Lower fraction of boundary layer to consider
 
 def process_data(cf_file, cp_file, profile_file, output_path="./"):
     """

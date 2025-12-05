@@ -16,10 +16,10 @@ DELTA_STATS_PATH = os.path.join(STATS_PATH, "delta_paper.csv")
 OUTPUT_PATH = os.path.join(WM_DATA_PATH, "data")
 
 REYNOLDS_NUMBER = 667_000
-UPPER_FRACTION = 0.13
-LOWER_FRACTION = 0.025
-UPPER_FRACTION_SEP = 0.1
-LOWER_FRACTION_SEP = 0.003
+UPPER_FRACTION = 0.15
+LOWER_FRACTION = 0.000
+UPPER_FRACTION_SEP = 0.15
+LOWER_FRACTION_SEP = 0.000
 H = 0.22
 
 # --- Select whether to save data and which points to inspect ---
@@ -279,12 +279,12 @@ def calculate_pi_groups(
         "u2_y_over_nu": u_interp_2 * dist_normal / kinematic_viscosity,
         "u3_y_over_nu": u_interp_3 * dist_normal / kinematic_viscosity,
         "u4_y_over_nu": u_interp_4 * dist_normal / kinematic_viscosity,
-        "dudy1_y_pow2_over_nu": dudy_1 * dist_normal**2
-        / kinematic_viscosity,
-        "dudy2_y_pow2_over_nu": dudy_2 * dist_normal**2
-        / kinematic_viscosity,
-        "dudy3_y_pow2_over_nu": dudy_3 * dist_normal**2
-        / kinematic_viscosity,
+        # "dudy1_y_pow2_over_nu": dudy_1 * dist_normal**2
+        # / kinematic_viscosity,
+        # "dudy2_y_pow2_over_nu": dudy_2 * dist_normal**2
+        # / kinematic_viscosity,
+        # "dudy3_y_pow2_over_nu": dudy_3 * dist_normal**2
+        # / kinematic_viscosity,
     }
 
 
@@ -307,9 +307,9 @@ def calculate_unnormalized_inputs(
         "u2": u_interp_2,
         "u3": u_interp_3,
         "u4": u_interp_4,
-        "dudy1": dudy_1, 
-        "dudy2": dudy_2,
-        "dudy3": dudy_3,
+        # "dudy1": dudy_1, 
+        # "dudy2": dudy_2,
+        # "dudy3": dudy_3,
     }
 
 

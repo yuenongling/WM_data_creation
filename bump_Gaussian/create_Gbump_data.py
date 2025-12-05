@@ -17,9 +17,9 @@ OUTPUT_PATH = os.path.join(WM_DATA_PATH, "data")
 REYNOLDS_NUMBER = int(sys.argv[1])*1_000_000 if len(sys.argv) > 1 else 2_000_000
 RE_STRING = f'{REYNOLDS_NUMBER//1_000_000}M'
 UPPER_FRACTION = 0.25
-LOWER_FRACTION = 0.001
-UPPER_FRACTION_SEP = 0.05
-LOWER_FRACTION_SEP = 0.001
+LOWER_FRACTION = 0.000
+UPPER_FRACTION_SEP = 0.25
+LOWER_FRACTION_SEP = 0.000
 
 # --- Select whether to save data and which points to inspect ---
 import sys

@@ -20,8 +20,8 @@ delta99 = np.array([9.29, 10.19, 11.62, 12.51]) * 1e-2 # in m
 nu   = np.array([0.00935, 0.00939, 0.00942, 0.00963]) * 1e-4 # in m^2/s
 
 # Fractions for defining the boundary layer region of interest
-UP_FRAC = 0.2    # Upper fraction of boundary layer to consider
-DOWN_FRAC = 0.002 # Lower fraction of boundary layer to consider
+UP_FRAC = 0.25    # Upper fraction of boundary layer to consider
+DOWN_FRAC = 0.000 # Lower fraction of boundary layer to consider
 
 all_inputs_data = []
 all_output_data = []

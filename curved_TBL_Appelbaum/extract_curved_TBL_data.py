@@ -21,8 +21,8 @@ WM_DATA_PATH = import_path()  # Ensure the BFM_PATH and subdirectories are in th
 datapath = os.path.join(WM_DATA_PATH, 'data')
 STATS_FILE = os.path.join(WM_DATA_PATH, 'curved_TBL_Appelbaum', 'stats')
 
-UP_FRAC = 0.2
-DOWN_FRAC = 0.01
+UP_FRAC = 0.25
+DOWN_FRAC = 0.000
 
 def find_k_y_values(y, U_all, y_all, k=2):
     '''
@@ -40,11 +40,6 @@ for subcase in cases:
     # WARNING: Only extract pg case
     if filename != 'ztmd_pgc.h5':
         continue
-
-    # inputs = np.empty((1,8))
-    # output = np.empty((1,))
-    # flow_type = np.empty((1,5))
-    # unnormalized_inputs = np.empty((1,11))
 
     all_inputs_data = []
     all_output_data = []
@@ -214,7 +209,7 @@ for subcase in cases:
     unnormalized_inputs_df = pd.concat(all_unnormalized_inputs_data, ignore_index=True)
 
 # Save DataFrames to HDF5 file
-    output_filename = os.path.join(datapath, 'curved_TBL_FPG_data.h5')
+    output_filename = os.path.join(datapath, 'curved_TBL_data.h5')
     print(f"\nSaving data to HDF5 file: {output_filename}")
         # Use fixed format for better performance with numerical data
     inputs_df.to_hdf(output_filename, key='inputs', mode='w', format='fixed')

@@ -14,10 +14,10 @@ WALL_GEO_PATH = os.path.join(STATS_PATH, "CoordsCleanup.dat")
 OUTPUT_PATH = os.path.join(WM_DATA_PATH, "data")
 
 REYNOLDS_NUMBER = 936000
-UPPER_FRACTION = 0.15
-LOWER_FRACTION = 0.025
-UPPER_FRACTION_SEP = 0.1
-LOWER_FRACTION_SEP = 0.003
+UPPER_FRACTION = 0.25
+LOWER_FRACTION = 0.000
+UPPER_FRACTION_SEP = 0.25
+LOWER_FRACTION_SEP = 0.000
 
 # --- Select whether to save data and which points to inspect ---
 import sys

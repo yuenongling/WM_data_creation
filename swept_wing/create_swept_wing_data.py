@@ -10,8 +10,8 @@ datapath = os.path.join(WM_DATA_PATH, 'data')
 STATS_FILE = os.path.join(WM_DATA_PATH, 'swept_wing', 'stats')
 
 # --- Load the APG data ---
-UP_FRAC = 0.2
-DOWN_FRAC = 0.01
+UP_FRAC = 0.25
+DOWN_FRAC = 0.00
 
 # --- read cp ---
 cp_data = np.loadtxt(os.path.join(STATS_FILE, 'f0251a-pt3.dat'), comments='%', usecols=(2,4))

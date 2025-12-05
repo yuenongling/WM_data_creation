@@ -134,10 +134,8 @@ DATA_FILE = os.path.join(WM_DATA_PATH, 'transition_JHU', 'stats', 'stats.pkl')
 with open(DATA_FILE, 'rb') as f:
     result = pkl.load(f)
 
-UP_FRAC = 0.2
-DOWN_FRAC = 0.01
-
-
+UP_FRAC = 0.25
+DOWN_FRAC = 0.000
 
 # Read data
 tauw = result['tauw']  # Wall shear stress
@@ -161,10 +159,12 @@ x_laminar = xall[(xall > 100) & (xall < 200)]
 x_laminar_idx = np.where((xall > 100) & (xall < 200))[0]
 x_transition_idx = np.where((xall > 200) & (xall < 460))[0]
 x_turbulent_idx = np.where((xall > 460) & (xall < 800))[0]
+x_all_idx = np.where((xall > 100) & (xall < 800))[0]
 
 save_to_hdf5(x_laminar_idx   , x, y, U, P, nu, utau, dPdx, up, delta99, reg_name='laminar')
 save_to_hdf5(x_transition_idx, x, y, U, P, nu, utau, dPdx, up, delta99, reg_name='transition')
 save_to_hdf5(x_turbulent_idx , x, y, U, P, nu, utau, dPdx, up, delta99, reg_name='turbulent')
+save_to_hdf5(x_all_idx , x, y, U, P, nu, utau, dPdx, up, delta99, reg_name='all')
 
 
 

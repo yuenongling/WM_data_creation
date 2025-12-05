@@ -17,8 +17,8 @@ statspath = os.path.join(currentpath, 'stats')
 
 # --- Hardcoded some data ---
 rho = 1
-UP_FRAC = 0.20
-DOWN_FRAC = 0.025
+UP_FRAC = 0.25
+DOWN_FRAC = 0.000
 NUM_STATIONS = 12  # Number of stations per case
 cases = np.arange(1, 9)
 

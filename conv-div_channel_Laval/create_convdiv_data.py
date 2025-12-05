@@ -13,10 +13,10 @@ STATS_PATH = os.path.join(WM_DATA_PATH, "conv-div_channel_Laval", "stats")
 WALL_STATS_PATH = os.path.join(STATS_PATH, "statistics_streamwise.dat")
 OUTPUT_PATH = os.path.join(WM_DATA_PATH, "data")
 REYNOLDS_NUMBER = 12600
-UPPER_FRACTION = 0.20
-LOWER_FRACTION = 0.025
-UPPER_FRACTION_SEP = 0.005
-LOWER_FRACTION_SEP = 0.00003
+UPPER_FRACTION = 0.25
+LOWER_FRACTION = 0.000
+UPPER_FRACTION_SEP = 0.25
+LOWER_FRACTION_SEP = 0.000
 
 # --- Select whether to save data and which points to inspect ---
 import sys

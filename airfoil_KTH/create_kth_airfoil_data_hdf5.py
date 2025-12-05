@@ -18,8 +18,8 @@ Res = {}
 Res['0012'] = [400_000]
 Res['4412'] = [100_000, 200_000, 400_000, 1_000_000]
 
-UP_FRAC = 0.20
-DOWN_FRAC = 0.025
+UP_FRAC = 0.25
+DOWN_FRAC = 0.000
 
 for case in subcases:
     cos_theta = np.loadtxt(datapath + f'/cosine_angle_naca{case}.txt', skiprows=1)

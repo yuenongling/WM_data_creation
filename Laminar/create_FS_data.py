@@ -32,7 +32,7 @@ nu = 1.45e-6
 c = 0.08
 rho = 1.225
 UP_FRAC = 0.25
-DOWN_FRAC = 0.005
+DOWN_FRAC = 0.000
 a_values = [2.0, 1.0, 0.6, 0.3, 0.1, 0.0, -0.05, -0.08, -0.09043]
 # Modified: Reynolds numbers from 100 to 10000
 reynolds_numbers = np.logspace(2, 4, 20) # 20 points logarithmically spaced between 10^2 (100) and 10^4 (10000)

@@ -21,8 +21,8 @@ rho = 1.11
 nu  = 1.65E-05
 
 # Fractions for defining the boundary layer region of interest
-UP_FRAC = 0.2    # Upper fraction of boundary layer to consider
-DOWN_FRAC = 0.002 # Lower fraction of boundary layer to consider
+UP_FRAC = 0.25    # Upper fraction of boundary layer to consider
+DOWN_FRAC = 0.000 # Lower fraction of boundary layer to consider
 
 all_inputs_data = []
 all_output_data = []

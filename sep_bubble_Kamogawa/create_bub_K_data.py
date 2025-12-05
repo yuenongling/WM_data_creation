@@ -10,8 +10,8 @@ savedatapath = os.path.join(WM_DATA_PATH, 'data')
 currentpath = os.path.join(WM_DATA_PATH, 'sep_bubble_Kamogawa')
 statspath = os.path.join(WM_DATA_PATH, 'sep_bubble_Kamogawa', 'stats')
 # NOTE: that the boundary layer thickness is not given for this case. Use some approx values
-UP_FRAC = 0.15
-DOWN_FRAC = 0.001
+UP_FRAC = 0.25
+DOWN_FRAC = 0.000
 
 def gaussian_kernel(x, xi, bandwidth):
     """

@@ -41,8 +41,8 @@ def create_channel_flow_data_hdf5(RO_NUMS, output_dir=os.path.join(WM_DATA_PATH,
         str: Path to the saved HDF5 file.
     """
     # Constants for data selection
-    y_lower_limit = 0.025 # Lower boundary layer limit (in physical units)
-    y_up_limit = 0.2    # Upper boundary layer limit (in physical units)
+    y_lower_limit = 0.000 # Lower boundary layer limit (in physical units)
+    y_up_limit = 0.25    # Upper boundary layer limit (in physical units)
 
     # Lists to collect data from all Re_num cases
     all_inputs_data = []
