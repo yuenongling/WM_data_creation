@@ -25,6 +25,8 @@ except ImportError:
 # --- Path Adjustments ---
 parent_dir = WM_DATA_PATH # This should be the base directory for outputs
 
+# --- region ---
+region = sys.argv[1] if len(sys.argv) > 1 else "ALL"
 
 # --- Physical and Simulation Constants ---
 # Vinf = 7.0 # This seems unused in the current script logic
@@ -33,12 +35,29 @@ c = 0.08
 rho = 1.225
 UP_FRAC = 0.25
 DOWN_FRAC = 0.000
-a_values = [2.0, 1.0, 0.6, 0.3, 0.1, 0.0, -0.05, -0.08, -0.09043]
+
+if region == "APG":
+    a_values = [ -0.05, -0.08, -0.09043,
+                # Milder APG cases
+                -0.0001, -0.001, -0.0025, -0.005, -0.01, -0.025, 
+                ]
+elif region == "FPG":
+    a_values = [2.0, 1.0, 0.6, 0.3, 0.1,
+                # Milder FPG cases
+                0.0001, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.075
+                ]
+elif region == "ZPG":
+    a_values = [0.0]
+else: # "ALL"
+    a_values = [2.0, 1.0, 0.6, 0.3, 0.1, 0.0, -0.05, -0.08, -0.09043,
+                # Milder APG cases
+                -0.0001, -0.001, -0.0025, -0.005, -0.01, -0.025,
+                # Milder FPG cases
+                0.0001, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.075
+                ]
 # Modified: Reynolds numbers from 100 to 10000
 reynolds_numbers = np.logspace(2, 4, 20) # 20 points logarithmically spaced between 10^2 (100) and 10^4 (10000)
 x_over_c_locations = np.linspace(0.1, 1.0, 20)
-YPLUS_THRESHOLD = 5.0 # Minimum y+ to include
-
 
 # --- Profile Calculation Function ---
 def calculate_falkner_skan_profile(a_value, Re, x_over_c_val):
@@ -186,7 +205,7 @@ def process_and_save_all_profiles(profiles_list, output_filename, output_data_di
 
         # Get the original indices in y_vals corresponding to the valid y+ points in the selected BL range
         final_indices_start = idx_start_bl
-        final_indices_end = idx_start_bl
+        final_indices_end = idx_end_bl
 
         if final_indices_end < final_indices_start:
             # print(f"Skipping profile (final) due to inverted index range after y+ filter: a={profile['a_value']}, Re={profile['Re']}, x/c={profile['x_over_c']}")
@@ -331,7 +350,7 @@ if __name__ == "__main__":
     # --- Define output directory and single filename ---
     output_save_dir = os.path.join(parent_dir, "data") # e.g., BFM_PATH/data/
     # Modified: Define a single output filename for all data
-    combined_output_filename = os.path.join(output_save_dir, "FS_ALL_combined_data.h5")
+    combined_output_filename = os.path.join(output_save_dir, f"FS_{region}_data.h5")
 
     # --- Process and Save ALL profiles into a single file ---
     print("\n--- Processing and Saving All Data ---")

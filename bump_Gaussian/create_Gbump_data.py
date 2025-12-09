@@ -503,9 +503,12 @@ else:
     p          = data["P/p_inf"]
 
 # Calculate necessary quantities
-dpds_wall = calculate_directional_derivative(
-    interpolate_values(x_normal[:, 0], cp_data[:, 0], cp_data[:, 1]), x_normal
+dpds_wall  = calculate_directional_derivative(
+        interpolate_values(x_normal[:, 0], cp_data[:, 0], cp_data[:, 1]), np.stack((x_normal[:,0], y_normal[:,0]),axis=1)
 ) * 2
+# dpds_wall2 = calculate_directional_derivative(
+#     interpolate_values(x_normal[:, 0], cp_data[:, 0], cp_data[:, 1]), x_normal
+# ) * 2
 u_mag = calculate_bump_parallel_velocity(
     x_normal, y_normal, u_velocity, v_velocity
 )[:, 1:]  # Remove wall values
