@@ -270,9 +270,10 @@ def process_and_save_all_profiles(profiles_list, output_filename, output_data_di
             else: current_region = 'ZPG' # abs(dp_dx) <= 1e-6
             all_flow_type_rows.append({
                 'case_name': f"FS_{current_region}", # Case name based on type
-                'Re_c': profile['Re'],
+                'nu': nu,
                 'x_over_c': profile['x_over_c'],
-                'delta99': delta_99,
+                'delta': delta_99,
+                # First four are common to all cases
                 'a_value': profile['a_value'],
                 'ue': profile['ue'],
                 'dp_dx': dp_dx
