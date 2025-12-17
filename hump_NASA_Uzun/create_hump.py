@@ -239,7 +239,7 @@ def process_and_save_region_data(
     ind_end,
     up_frac=UPPER_FRACTION,
     down_frac=LOWER_FRACTION,
-    save_plots=False,
+    show_plots=False
 ):
     """
     Processes data for a specified region and saves it to an HDF5 file.
@@ -344,6 +344,11 @@ def process_and_save_region_data(
     # flow_type_df = flow_type_df.loc[valid_indices].copy()
     # unnormalized_inputs_df = unnormalized_inputs_df.loc[valid_indices].copy()
 
+    if show_plots:
+        plt.scatter(inputs_df['u1_y_over_nu'], inputs_df['up_y_over_nu'], alpha=0.5)
+        plt.show()
+        plt.close()
+
     data_dict = {
         "inputs": inputs_df,
         "output": output_df,
@@ -351,7 +356,10 @@ def process_and_save_region_data(
         "unnormalized_inputs": unnormalized_inputs_df,
     }
 
-    save_to_hdf5(data_dict, f"hump_data")
+    if region == 'hump':
+        save_to_hdf5(data_dict, f"hump_data")
+    else:
+        save_to_hdf5(data_dict, f"hump_{region}_data")
 
 def calculate_tangent_normal_velocity(u, v, unit_tangents, unit_normals):
     """
@@ -430,11 +438,6 @@ def calculate_tangent_normal_velocity(u, v, unit_tangents, unit_normals):
 
 # Load data
 data = load_bump_data("wall_normal_profiles.pkl")
-
-# WARNING: This is outdated; previously read in two files, now merged into one
-# data_aft = load_bump_data("wall_normal_profiles_aft.pkl")
-# data = data | data_aft # Merge dictionaries
-
 
 cf_data, cp_data = load_cf_cp_data()
 
@@ -526,7 +529,112 @@ if save_data:
         len(u_mag)-1,
         up_frac=UPPER_FRACTION,
         down_frac=LOWER_FRACTION,
-        save_plots=False,
+    )
+
+    # FPG
+    x_start = 0.05
+    x_end   = 0.56
+    ind_start = np.argmin(np.abs(x_normal[:,0]-x_start))
+    ind_end   = np.argmin(np.abs(x_normal[:,0]-x_end))
+    process_and_save_region_data(
+        p,
+        u_mag,
+        utau_interpolated,
+        x_normal, # X coordinates of the wall
+        s_dist, # Wall-normal distance
+        1, 
+        up,
+        'FPG',
+        ind_start,
+        ind_end,
+        up_frac=UPPER_FRACTION,
+        down_frac=LOWER_FRACTION,
+        show_plots=True
+    )
+
+    # APG
+    x_start = 0.59
+    x_end   = 0.66
+    ind_start = np.argmin(np.abs(x_normal[:,0]-x_start))
+    ind_end   = np.argmin(np.abs(x_normal[:,0]-x_end))
+    process_and_save_region_data(
+        p,
+        u_mag,
+        utau_interpolated,
+        x_normal, # X coordinates of the wall
+        s_dist, # Wall-normal distance
+        1, 
+        up,
+        'APG',
+        ind_start,
+        ind_end,
+        up_frac=UPPER_FRACTION,
+        down_frac=LOWER_FRACTION,
+        show_plots=True
+    )
+
+    # APG_SEP_1
+    x_start = 0.665
+    x_end   = 0.69
+    ind_start = np.argmin(np.abs(x_normal[:,0]-x_start))
+    ind_end   = np.argmin(np.abs(x_normal[:,0]-x_end))
+    process_and_save_region_data(
+        p,
+        u_mag,
+        utau_interpolated,
+        x_normal, # X coordinates of the wall
+        s_dist, # Wall-normal distance
+        1, 
+        up,
+        'APG_SEP1',
+        ind_start,
+        ind_end,
+        up_frac=UPPER_FRACTION,
+        down_frac=LOWER_FRACTION,
+        show_plots=True
+    )
+
+
+    # FPG2
+    x_start = 0.70
+    x_end   = 0.80
+    ind_start = np.argmin(np.abs(x_normal[:,0]-x_start))
+    ind_end   = np.argmin(np.abs(x_normal[:,0]-x_end))
+    process_and_save_region_data(
+        p,
+        u_mag,
+        utau_interpolated,
+        x_normal, # X coordinates of the wall
+        s_dist, # Wall-normal distance
+        1, 
+        up,
+        'FPG_SEP',
+        ind_start,
+        ind_end,
+        up_frac=UPPER_FRACTION,
+        down_frac=LOWER_FRACTION,
+        show_plots=True
+    )
+
+    # APG2
+    x_start = 0.81
+    x_end   = 1.1
+    ind_start = np.argmin(np.abs(x_normal[:,0]-x_start))
+    ind_end   = np.argmin(np.abs(x_normal[:,0]-x_end))
+    process_and_save_region_data(
+        p,
+        u_mag,
+        utau_interpolated,
+        x_normal, # X coordinates of the wall
+        s_dist, # Wall-normal distance
+        1, 
+        up,
+        'APG_SEP2',
+        ind_start,
+        ind_end,
+        up_frac=UPPER_FRACTION,
+        down_frac=LOWER_FRACTION,
+        show_plots=True
     )
 
 if len(inspect_x) > 0:
